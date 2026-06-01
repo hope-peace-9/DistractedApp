@@ -12,18 +12,16 @@ import CoreGraphics
 //  • Spaces/Full-screen: canJoinAllSpaces + fullScreenAuxiliary
 //  • Multi-screen: NSEvent.mouseLocation match, NSScreen.main as fallback
 //
-//  [EN] Phase 2 additions:
-//       - showAndFadeOut() with re-entrancy guard
-//       - Position-based coordinate calculation (Center / Top)
-//       - Soft pastel text colour, HH:mm format, fade-in + hold + fade-out
-//  [CN] Phase 2 新增：
-//       - showAndFadeOut() 防重入保护
-//       - 基于 position 的坐标计算（Center / Top）
-//       - 柔和配色，HH:mm 格式，淡入 + 停留 + 淡出
-//  [JP] Phase 2 追加：
-//       - 再入防止付き showAndFadeOut()
-//       - position（Center/Top）に基づく座標計算
-//       - ソフトな色合い、HH:mm 形式、フェードイン→停止→フェードアウト
+//  [EN] Phase 3 additions:
+//       - 6-position coordinate calculation (Top-Left, Top, Top-Right,
+//         Center, Bottom-Left, Bottom-Right)
+//       - Duration read from UserDefaults in showAndFadeOut()
+//  [CN] Phase 3 新增：
+//       - 六种屏幕定位坐标计算（左上、顶端、右上、中央、左下、右下）
+//       - showAndFadeOut() 从 UserDefaults 读取停留时间
+//  [JP] Phase 3 追加：
+//       - 6ポジションの座標計算（左上、上、右上、中央、左下、右下）
+//       - showAndFadeOut() で UserDefaults から持続時間を読み取り
 // ═══════════════════════════════════════════════════════════════
 
 final class TimeOverlayWindow: NSWindow {
@@ -32,9 +30,9 @@ final class TimeOverlayWindow: NSWindow {
     override var canBecomeKey: Bool  { false }
     override var canBecomeMain: Bool { false }
 
-    // [EN] Re-entrancy guard: skip if animation is already in progress.
-    // [CN] 防重入守卫：动画进行中忽略一切新触发。
-    // [JP] 再入防止フラグ：アニメーション中は新規呼び出しを無視。
+    /// [EN] Re-entrancy guard: skip if animation is already in progress.
+    /// [CN] 防重入守卫：动画进行中忽略一切新触发。
+    /// [JP] 再入防止フラグ：アニメーション中は新規呼び出しを無視。
     private var isAnimating = false
 
     // ── Init ──────────────────────────────────────────────────
@@ -67,33 +65,63 @@ final class TimeOverlayWindow: NSWindow {
     // ── Dynamic screen positioning ────────────────────────────
 
     /// [EN] Position the window based on the active screen and user preference.
+    ///      Supports 6 presets: Top-Left, Top, Top-Right, Center, Bottom-Left, Bottom-Right.
+    ///      Uses the **mouse cursor's screen** as priority; NSScreen.main as fallback.
     /// [CN] 根据当前活跃屏幕和用户偏好定位窗口。
+    ///      支持 6 种预设：左上、顶端、右上、中央、左下、右下。
+    ///      优先使用鼠标光标所在屏幕；兜底用主屏。
     /// [JP] アクティブスクリーンとユーザー設定に基づきウィンドウを配置。
+    ///      6つのプリセットに対応：左上、上、右上、中央、左下、右下。
+    ///      マウスカーソルがある画面を優先、なければメイン画面。
     ///
-    /// - Parameter position: "Center" (screen centre) or "Top" (top-centre).
-    func positionOnActiveScreen(position: String = "Center") {
+    /// - Parameter position: One of the six Constants.Position raw values.
+    func positionOnActiveScreen(position: String = Constants.Position.center.rawValue) {
         guard let screen = bestTargetScreen() else { return }
 
+        // [EN] Use visibleFrame to account for menu bar and Dock.
+        // [CN] 使用 visibleFrame 以避开菜单栏和 Dock。
+        // [JP] メニューバーとDockを考慮し visibleFrame を使用。
         let sf = screen.visibleFrame
         let w = Constants.overlayWidth
         let h = Constants.overlayHeight
+        let inset = Constants.positionInset
 
-        let centerX = sf.origin.x + (sf.width - w) / 2
-
+        // [EN] Calculate origin based on position preset.
+        // [CN] 根据位置预设计算起点坐标。
+        // [JP] 位置プリセットに基づき原点を計算。
+        let originX: CGFloat
         let originY: CGFloat
-        if position == "Top" {
-            // [EN] Pin near the top edge of the screen.
-            // [CN] 将窗口固定在屏幕靠上的位置。
-            // [JP] 画面上端付近にウィンドウを固定。
-            originY = sf.origin.y + sf.height - h - Constants.topPositionOffset
-        } else {
-            // [EN] Default: vertical centre.
-            // [CN] 默认：垂直居中。
-            // [JP] デフォルト：垂直中央。
+
+        switch position {
+        case Constants.Position.topLeft.rawValue:
+            originX = sf.origin.x + inset
+            originY = sf.origin.y + sf.height - h - inset
+
+        case Constants.Position.top.rawValue:
+            originX = sf.origin.x + (sf.width - w) / 2
+            originY = sf.origin.y + sf.height - h - inset
+
+        case Constants.Position.topRight.rawValue:
+            originX = sf.origin.x + sf.width - w - inset
+            originY = sf.origin.y + sf.height - h - inset
+
+        case Constants.Position.bottomLeft.rawValue:
+            originX = sf.origin.x + inset
+            originY = sf.origin.y + inset
+
+        case Constants.Position.bottomRight.rawValue:
+            originX = sf.origin.x + sf.width - w - inset
+            originY = sf.origin.y + inset
+
+        // [EN] Default (and "Center") — centred both axes.
+        // [CN] 默认及 "Center" —— 水平垂直居中。
+        // [JP] デフォルト（"Center"）—— 縦横とも中央。
+        default:
+            originX = sf.origin.x + (sf.width - w) / 2
             originY = sf.origin.y + (sf.height - h) / 2
         }
 
-        setFrame(NSRect(x: centerX, y: originY, width: w, height: h), display: false)
+        setFrame(NSRect(x: originX, y: originY, width: w, height: h), display: false)
     }
 
     /// [EN] Prefer the screen containing the mouse cursor; fall back to main.
@@ -109,11 +137,14 @@ final class TimeOverlayWindow: NSWindow {
 
     // ── Show & Fade Out (with re-entrancy guard) ──────────────
 
-    /// [EN] Animate: 0→1 (opacity), hold 2s, 1→0 (opacity), then hide.
+    /// [EN] Animate: 0→1 (opacity), hold for user-configured duration (UserDefaults),
+    ///      1→0 (opacity), then hide.
     ///      Re-entrancy guard prevents overlapping animations.
-    /// [CN] 动画流程：透明度 0→1，停留 2 秒，透明度 1→0，然后隐藏。
+    /// [CN] 动画流程：透明度 0→1，停留用户设定的时长（来自 UserDefaults），
+    ///      透明度 1→0，然后隐藏。
     ///      防重入守卫阻止动画重叠。
-    /// [JP] アニメーション：不透明度 0→1、2秒停止、1→0、最後に非表示。
+    /// [JP] アニメーション：不透明度 0→1、ユーザー設定の秒数停止（UserDefaults）、
+    ///      不透明度 1→0、最後に非表示。
     ///      再入防止ガードによりアニメーションの重複を防止。
     func showAndFadeOut() {
         // [EN] Re-entrancy guard: if already animating, ignore this call.
@@ -144,6 +175,14 @@ final class TimeOverlayWindow: NSWindow {
         fmt.dateFormat = "HH:mm"
         contentView.updateTime(fmt.string(from: Date()))
 
+        // [EN] Read hold duration from UserDefaults (seconds). Clamp to valid range.
+        // [CN] 从 UserDefaults 读取停留时长（秒）。限制在有效范围内。
+        // [JP] UserDefaults から表示維持時間（秒）を読み込み。有効範囲に収める。
+        var holdDuration = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKey.durationSeconds)
+        if holdDuration < Constants.durationMin || holdDuration > Constants.durationMax {
+            holdDuration = Constants.defaultDurationSeconds
+        }
+
         // [EN] Ensure window starts invisible before fade-in.
         // [CN] 确保窗口在淡入前初始为不可见。
         // [JP] フェードイン前にウィンドウを確実に非表示に。
@@ -161,10 +200,10 @@ final class TimeOverlayWindow: NSWindow {
         }
 
         // ── Phase 2: Hold → Fade out ─────────────────────────
-        // [EN] After the hold duration, animate alpha from 1 → 0, then hide.
-        // [CN] 停留时间结束后，透明度从 1 动画过渡到 0，然后隐藏。
-        // [JP] 停止時間経過後、不透明度を 1 → 0 にアニメーションし非表示に。
-        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.flashDuration) { [weak self] in
+        // [EN] After the user-configured hold duration, animate alpha from 1 → 0.
+        // [CN] 等待用户设定的停留时间后，透明度从 1 动画过渡到 0。
+        // [JP] ユーザー設定の停止時間経過後、不透明度を 1 → 0 にアニメーション。
+        DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(holdDuration)) { [weak self] in
             guard let self = self else { return }
 
             NSAnimationContext.runAnimationGroup { ctx in

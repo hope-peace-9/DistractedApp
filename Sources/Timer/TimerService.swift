@@ -37,10 +37,13 @@ final class TimerService {
     private let queue = DispatchQueue(label: "com.distracted.timer",
                                       qos: .background)
 
-    /// [EN] Absolute timestamp of the *next* scheduled flash.
-    /// [CN] *下次*触发闪烁的绝对时间戳。
-    /// [JP] *次回*点滅の絶対タイムスタンプ。
-    private var nextFlashTimestamp: Date?
+    /// [EN] Absolute timestamp this timer instance was armed for (the *next* expected fire).
+    ///      Used on wake to decide whether a flash was missed during sleep.
+    /// [CN] 当前 Timer 所瞄准的绝对触发时间（即*下次*预期触发时间）。
+    ///      唤醒时用于判断休眠期间是否错过了提醒。
+    /// [JP] このタイマーインスタンスが設定された絶対発火時刻（*次回*発火予定時刻）。
+    ///      ウェイク時にスリープ中の取りこぼしを判定するために使用。
+    private var targetDate: Date?
 
     /// [EN] Current interval in seconds.
     /// [CN] 当前间隔（秒）。
@@ -70,12 +73,7 @@ final class TimerService {
          onFlash: (() -> Void)?) {
         self.interval = interval
         self.onFlash = onFlash
-
-        // [EN] Log effective interval at startup for debugging.
-        // [CN] 启动时记录实际间隔，方便调试。
-        // [JP] 起動時に有効な間隔を記録（デバッグ用）。
         print("[Distracted] TimerService initialised — interval: \(Int(interval))s")
-
         scheduleNext()
     }
 
@@ -85,19 +83,29 @@ final class TimerService {
 
     // MARK: - Scheduling (private)
 
-    /// [EN] Schedule the next flash based on the stored absolute timestamp,
-    ///      or compute the next interval boundary from now if no future target exists.
-    /// [CN] 基于绝对时间戳调度下次闪烁；如无有效未来目标则从现在起计算。
-    /// [JP] 保存された絶対タイムスタンプに基づき次回点滅を予約。
-    ///      未来の目標がない場合は現在時刻から再計算。
+    /// [EN] Schedule the next flash.
+    ///      If targetDate is set and still in the future, use it directly.
+    ///      Otherwise compute the next interval boundary from now.
+    /// [CN] 调度下一次闪烁。
+    ///      如果 targetDate 已设定且仍在未来，直接使用。
+    ///      否则从当前时间计算下一个间隔边界。
+    /// [JP] 次回点滅を予約。
+    ///      targetDate が設定済みで未来の時刻ならそのまま使用。
+    ///      そうでなければ現在時刻から次のインターバル境界を計算。
     private func scheduleNext() {
         let now = Date()
 
-        if let next = nextFlashTimestamp, next > now {
-            armTimer(for: next)
+        if let target = targetDate, target > now {
+            // [EN] Valid future target exists → arm for it.
+            // [CN] 存在有效的未来目标 → 直接瞄准。
+            // [JP] 有効な未来の目標あり → そのまま設定。
+            armTimer(for: target)
         } else {
+            // [EN] No target or target is in the past → align to next interval boundary.
+            // [CN] 无目标或目标已过期 → 对齐到下一个间隔边界。
+            // [JP] 目標がない、または過去の時刻 → 次のインターバル境界に合わせる。
             let next = nextIntervalBoundary(after: now)
-            nextFlashTimestamp = next
+            targetDate = next
             armTimer(for: next)
         }
     }
@@ -114,12 +122,16 @@ final class TimerService {
         return Date(timeIntervalSince1970: intervals * interval)
     }
 
-    /// [EN] Create a one-shot DispatchSourceTimer that fires at the given Date.
-    /// [CN] 创建一个在指定日期触发的一次性 DispatchSourceTimer。
-    /// [JP] 指定された Date に発火する単発 DispatchSourceTimer を作成。
+    /// [EN] Create a one-shot DispatchSourceTimer that fires at `date`.
+    ///      Saves `date` as `targetDate` for wake-recalibration comparison.
+    /// [CN] 创建一个在 `date` 触发的一次性 DispatchSourceTimer，
+    ///      并将 `date` 保存为 `targetDate`，供唤醒校准时对比使用。
+    /// [JP] 指定された `date` に発火する単発 DispatchSourceTimer を作成。
+    ///      `date` を `targetDate` として保存し、ウェイク時の再調整に使用。
     private func armTimer(for date: Date) {
         timer?.cancel()
 
+        targetDate = date
         let delay = max(date.timeIntervalSinceNow, 0.1)
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + delay, leeway: .milliseconds(100))
@@ -133,10 +145,9 @@ final class TimerService {
                 self.onFlash?()
             }
 
-            // [EN] Advance to the next boundary for the following tick.
+            // [EN] Advance target for the next tick and schedule it.
             // [CN] 推进到下一个边界，准备下一轮触发。
             // [JP] 次回ティックのために次の境界に進める。
-            self.nextFlashTimestamp = date.addingTimeInterval(self.interval)
             self.scheduleNext()
         }
         t.resume()
@@ -145,22 +156,77 @@ final class TimerService {
 
     // MARK: - Public API
 
-    /// [EN] Cancel pending timer. Called on sleep — preserves the missed target.
-    /// [CN] 取消待执行的定时器。在系统休眠时调用——保留被跳过的目标时间戳。
-    /// [JP] 保留中のタイマーをキャンセル。スリープ時に呼び出す——未達の目標は保持。
+    /// [EN] Cancel pending timer. Preserves `targetDate` so we can detect misses on wake.
+    /// [CN] 取消待执行的定时器。保留 `targetDate` 以便唤醒时检测是否错过。
+    /// [JP] 保留中のタイマーをキャンセル。スリープ復帰時の取りこぼし検出のため
+    ///      `targetDate` は保持する。
     func pause() {
         timer?.cancel()
         timer = nil
-        print("[Distracted] Timer paused")
+        print("[Distracted] Timer paused (target: \(targetDate?.formatted(date: .omitted, time: .standard) ?? "?"))")
     }
 
-    /// [EN] Recalibrate after wake: discard missed targets and schedule from now.
-    /// [CN] 唤醒后重新校准：丢弃已经错过的目标时间戳，从现在开始重新调度。
-    /// [JP] ウェイク後に再調整：未達の目標を破棄し現在時刻から再スケジュール。
+    /// [EN] Recalibrate after wake. Compares current time with `targetDate`:
+    ///      - If `Date() >= targetDate`: a flash was missed during sleep → trigger immediately,
+    ///        then recalculate the next target from now.
+    ///      - If `Date() < targetDate`: flash is still pending → re-arm with remaining time.
+    /// [CN] 唤醒后重新校准。将当前时间与 `targetDate` 对比：
+    ///      - 如果 `Date() >= targetDate`：休眠期间错过了提醒 → 立即触发一次，
+    ///        然后从当前时间重新计算下一个目标。
+    ///      - 如果 `Date() < targetDate`：尚未错过 → 按剩余时间重新启动 Timer。
+    /// [JP] ウェイク後に再調整。現在時刻と `targetDate` を比較：
+    ///      - `Date() >= targetDate`：スリープ中に取りこぼし → 即座に点滅、
+    ///        その後現在時刻から次の目標を再計算。
+    ///      - `Date() < targetDate`：まだ発火時刻前 → 残り時間でタイマーを再設定。
     func recalibrate() {
-        nextFlashTimestamp = nil
-        scheduleNext()
-        let nextStr = nextFlashTimestamp?.formatted(date: .omitted, time: .standard) ?? "?"
+        guard let target = targetDate else {
+            // [EN] No target set — just schedule from now.
+            // [CN] 没有目标 → 从现在开始调度。
+            // [JP] 目標なし → 現在時刻からスケジュール。
+            scheduleNext()
+            return
+        }
+
+        let now = Date()
+
+        if now >= target {
+            // [EN] ⚠️ Missed a flash during sleep → trigger immediately.
+            // [CN] ⚠️ 休眠期间错过了提醒 → 立即触发。
+            // [JP] ⚠️ スリープ中に点滅を取りこぼし → 即座に発火。
+            print("[Distracted] Missed flash during sleep (target was \(target.formatted(date: .omitted, time: .standard))) — triggering now")
+
+            DispatchQueue.main.async { [weak self] in
+                self?.onFlash?()
+            }
+
+            // [EN] Reset target and recompute from current time.
+            // [CN] 重置目标，从当前时间重新计算。
+            // [JP] 目標をリセットし、現在時刻から再計算。
+            targetDate = nil
+            scheduleNext()
+        } else {
+            // [EN] Target is still in the future → re-arm with remaining interval.
+            // [CN] 目标仍在未来 → 按剩余间隔重新启动 Timer。
+            // [JP] まだ未来の目標 → 残り時間でタイマーを再セット。
+            let remaining = target.timeIntervalSinceNow
+            print("[Distracted] Wake before scheduled flash — remaining: \(Int(remaining))s, target: \(target.formatted(date: .omitted, time: .standard))")
+
+            timer?.cancel()
+            let t = DispatchSource.makeTimerSource(queue: queue)
+            t.schedule(deadline: .now() + max(remaining, 0.1), leeway: .milliseconds(100))
+            t.setEventHandler { [weak self] in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.onFlash?()
+                }
+                self.scheduleNext()
+            }
+            t.resume()
+            timer = t
+            targetDate = target
+        }
+
+        let nextStr = targetDate?.formatted(date: .omitted, time: .standard) ?? "?"
         print("[Distracted] Timer recalibrated — next flash at \(nextStr)")
     }
 
@@ -169,7 +235,7 @@ final class TimerService {
     /// [JP] 実行中に間隔を変更。即座にスケジュールをリセット。
     func setInterval(_ newInterval: TimeInterval) {
         interval = newInterval
-        nextFlashTimestamp = nil
+        targetDate = nil
         scheduleNext()
         print("[Distracted] Interval updated to \(Int(newInterval))s — schedule reset")
     }

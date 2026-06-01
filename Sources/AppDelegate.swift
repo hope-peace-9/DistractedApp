@@ -45,17 +45,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 3. Read persisted preferences
         let intervalMinutes = storedIntervalMinutes()
         let storedPos = storedPosition()
-        print("[Distracted] Loaded preferences — interval: \(intervalMinutes) min, position: \(storedPos)")
+        let storedDur = storedDurationSeconds()
+        print("[Distracted] Loaded preferences — interval: \(intervalMinutes) min, position: \(storedPos), duration: \(storedDur)s")
 
         // 4. Start the absolute-timestamp-backed timer
-        //    [EN] Read interval from UserDefaults; fall back to Constants.defaultFlashInterval.
-        //    [CN] 从 UserDefaults 读取间隔；兜底用 Constants.defaultFlashInterval。
-        //    [JP] UserDefaults から間隔を読み込み。デフォルトは Constants.defaultFlashInterval。
         let intervalSeconds = TimeInterval(intervalMinutes * 60)
         timerService = TimerService(interval: intervalSeconds) { [weak self] in
-            // [EN] Ensure all UI work happens on the main thread.
-            // [CN] 确保所有 UI 操作在主线程执行。
-            // [JP] すべての UI 処理がメインスレッドで実行されるよう保証。
             DispatchQueue.main.async {
                 self?.showTimeOverlay()
             }
@@ -64,18 +59,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 5. Status bar icon — user's only exit (LSUIElement = YES)
         statusBarController = StatusBarController()
 
-        // [EN] Wire: interval change → TimerService.setInterval() + UserDefaults saved inside StatusBarController.
-        // [CN] 连线：间隔变更 → TimerService.setInterval()，UserDefaults 在 StatusBarController 内保存。
-        // [JP] 配線：間隔変更 → TimerService.setInterval()。UserDefaults の保存は StatusBarController 内。
+        // [EN] Wire: interval change → TimerService.setInterval()
+        // [CN] 连线：间隔变更 → TimerService.setInterval()
+        // [JP] 配線：間隔変更 → TimerService.setInterval()
         statusBarController?.onIntervalChange = { [weak self] newIntervalSeconds in
             self?.timerService?.setInterval(newIntervalSeconds)
         }
 
-        // [EN] Wire: position change → no direct action needed (overlay reads from UserDefaults at flash time).
-        // [CN] 连线：位置变更 → 无需直接操作（弹窗每次闪烁时从 UserDefaults 读取）。
-        // [JP] 配線：位置変更 → 直接の操作は不要（点滅時にオーバーレイが UserDefaults から読み込む）。
+        // [EN] Wire: position change → log only (overlay reads from UserDefaults at flash time)
+        // [CN] 连线：位置变更 → 仅记日志（弹窗闪烁时从 UserDefaults 读取）
+        // [JP] 配線：位置変更 → ログのみ（点滅時にオーバーレイが UserDefaults から読み込む）
         statusBarController?.onPositionChange = { newPosition in
             print("[Distracted] Position preference updated to: \(newPosition)")
+        }
+
+        // [EN] Wire: duration change → log only (overlay reads from UserDefaults at flash time)
+        // [CN] 连线：停留时间变更 → 仅记日志（弹窗闪烁时从 UserDefaults 读取）
+        // [JP] 配線：持続時間変更 → ログのみ（点滅時にオーバーレイが UserDefaults から読み込む）
+        statusBarController?.onDurationChange = { newDuration in
+            print("[Distracted] Duration preference updated to: \(newDuration)s")
         }
 
         // 6. Listen for sleep/wake to recalibrate timer
@@ -127,13 +129,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Overlay Display
 
-    /// [EN] Triggered by TimerService when the interval boundary is reached.
-    /// [CN] 由 TimerService 在间隔边界到达时触发。
-    /// [JP] インターバル境界に達した際に TimerService から呼び出される。
+    /// [EN] Triggered by TimerService when the interval boundary is reached
+    ///      (or on wake if a flash was missed during sleep).
+    ///      The overlay window reads position + duration from UserDefaults on its own.
+    /// [CN] 由 TimerService 在间隔边界到达时（或唤醒后发现错过提醒时）触发。
+    ///      弹窗内部自行读取 UserDefaults 中的位置和停留时间。
+    /// [JP] インターバル境界到達時（またはウェイク時の取りこぼし検出時）に
+    ///      TimerService から呼び出される。オーバーレイ内で UserDefaults から
+    ///      位置と持続時間を自ら読み取る。
     private func showTimeOverlay() {
-        // [EN] The overlay window reads position + mouse-screen on its own via showAndFadeOut().
-        // [CN] 弹窗自身的 showAndFadeOut() 会自行读取位置偏好和鼠标所在屏幕。
-        // [JP] オーバーレイは showAndFadeOut() 内で位置設定とマウス画面を自ら読み取る。
         overlayWindow?.showAndFadeOut()
     }
 
@@ -153,5 +157,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func storedPosition() -> String {
         UserDefaults.standard.string(forKey: Constants.UserDefaultsKey.position)
             ?? Constants.Position.center.rawValue
+    }
+
+    /// [EN] Read persisted duration (seconds). Falls back to 2.
+    /// [CN] 读取持久化的停留时间（秒）。默认 2。
+    /// [JP] 保存された持続時間（秒）を読み込む。デフォルトは2。
+    private func storedDurationSeconds() -> Int {
+        let stored = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKey.durationSeconds)
+        return stored > 0 ? stored : Constants.defaultDurationSeconds
     }
 }

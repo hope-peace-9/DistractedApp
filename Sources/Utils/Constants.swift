@@ -41,10 +41,30 @@ enum Constants {
     static let overlayWidth: CGFloat  = 520
     static let overlayHeight: CGFloat = 260
 
-    /// [EN] Offset from top edge when position = "Top".
-    /// [CN] 当 position = "Top" 时距离屏幕顶部的偏移。
-    /// [JP] position = "Top" のときの画面上端からのオフセット。
+    /// [EN] Inset from screen edges for corner / side positioning.
+    /// [CN] 角/边定位时距离屏幕边缘的内边距。
+    /// [JP] 隅・端に配置するときの画面端からの余白。
+    static let positionInset: CGFloat = 40
+
+    /// [EN] Offset from top edge when position = "Top" (redundant with positionInset now, kept for backward compat).
+    /// [CN] 当 position = "Top" 时距离屏幕顶部的偏移（现与 positionInset 冗余，保留向后兼容）。
+    /// [JP] position = "Top" のときの画面上端からのオフセット（現在はpositionInsetと重複、後方互換用）。
     static let topPositionOffset: CGFloat = 80
+
+    // ── Duration presets ───────────────────────────────────────
+    /// [EN] Preset duration values (seconds) shown in the Duration submenu.
+    /// [CN] 停留时间子菜单中显示的预设值（秒）。
+    /// [JP] 持続時間サブメニューに表示するプリセット値（秒）。
+    static let durationPresets: [Int] = [2, 5]
+    static let defaultDurationSeconds: Int = 2
+    static let durationMin: Int = 1
+    static let durationMax: Int = 10
+
+    // ── Interval presets ───────────────────────────────────────
+    /// [EN] Preset interval values (minutes) shown in the Interval submenu.
+    /// [CN] 间隔子菜单中显示的预设值（分钟）。
+    /// [JP] 間隔サブメニューに表示するプリセット値（分）。
+    static let intervalPresets: [Int] = [15, 30, 60, 120]
 
     // ── UserDefaults keys ──────────────────────────────────────
     /// [EN] Keys used to persist user preferences in NSUserDefaults.
@@ -53,8 +73,10 @@ enum Constants {
     enum UserDefaultsKey {
         /// [EN] Flash interval in minutes (Double).
         static let intervalMinutes = "intervalMinutes"
-        /// [EN] Screen position preset ("Center" / "Top").
+        /// [EN] Screen position preset.
         static let position = "position"
+        /// [EN] Display hold duration in seconds (Int).
+        static let durationSeconds = "durationSeconds"
     }
 
     // ── Position options ───────────────────────────────────────
@@ -62,7 +84,11 @@ enum Constants {
     /// [CN] 菜单位置预设的可选值。
     /// [JP] メニューで選択可能な画面位置のプリセット。
     enum Position: String, CaseIterable {
-        case center = "Center"
-        case top    = "Top"
+        case topLeft     = "Top-Left"
+        case top         = "Top"
+        case topRight    = "Top-Right"
+        case center      = "Center"
+        case bottomLeft  = "Bottom-Left"
+        case bottomRight = "Bottom-Right"
     }
 }
