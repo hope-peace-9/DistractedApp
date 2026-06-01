@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(codesign -dvvv build/Distracted.app)",
+      "Bash(/usr/libexec/PlistBuddy -c \"Print\" build/Distracted.app/Contents/Info.plist)"
+    ]
+  }
+}
