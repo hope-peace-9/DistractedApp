@@ -15,6 +15,9 @@ enum Constants {
     /// [CN] 默认闪烁间隔（秒）。UserDefaults 优先级更高。
     /// [JP] デフォルトの点滅間隔（秒）。UserDefaultsが優先。
     static let defaultFlashInterval: TimeInterval = 1800  // 30 min
+    static let defaultIntervalMinutes: Int = 30
+    static let intervalMinMinutes: Int = 1
+    static let intervalMaxMinutes: Int = 999
 
     // ── Overlay display ────────────────────────────────────────
     /// [EN] How long the time stays fully visible before fade-out.
@@ -60,6 +63,11 @@ enum Constants {
     static let durationMin: Int = 1
     static let durationMax: Int = 10
 
+    // ── Phase 3 visual defaults ────────────────────────────────
+    static let defaultBackgroundOpacity: Double = 0.5
+    static let backgroundOpacityMin: Double = 0.0
+    static let backgroundOpacityMax: Double = 1.0
+
     // ── Interval presets ───────────────────────────────────────
     /// [EN] Preset interval values (minutes) shown in the Interval submenu.
     /// [CN] 间隔子菜单中显示的预设值（分钟）。
@@ -71,12 +79,20 @@ enum Constants {
     /// [CN] 持久化用户偏好时使用的 NSUserDefaults 键名。
     /// [JP] ユーザー設定を NSUserDefaults に保存するためのキー。
     enum UserDefaultsKey {
+        /// [EN] User-facing reminder switch.
+        static let isEnabled = "isEnabled"
         /// [EN] Flash interval in minutes (Double).
         static let intervalMinutes = "intervalMinutes"
         /// [EN] Screen position preset.
         static let position = "position"
         /// [EN] Display hold duration in seconds (Int).
         static let durationSeconds = "durationSeconds"
+        /// [EN] Overlay font/background scale preset.
+        static let fontScale = "fontScale"
+        /// [EN] Overlay background opacity, 0.0...1.0.
+        static let backgroundOpacity = "backgroundOpacity"
+        /// [EN] Preferences schema version for future migrations.
+        static let schemaVersion = "schemaVersion"
     }
 
     // ── Position options ───────────────────────────────────────
@@ -90,5 +106,35 @@ enum Constants {
         case center      = "Center"
         case bottomLeft  = "Bottom-Left"
         case bottomRight = "Bottom-Right"
+    }
+
+    // ── Phase 3 future UI options ──────────────────────────────
+    enum OverlayPosition: String, CaseIterable {
+        case topLeft = "Top-Left"
+        case topCenter = "Top"
+        case topRight = "Top-Right"
+        case middleLeft = "Middle-Left"
+        case center = "Center"
+        case middleRight = "Middle-Right"
+        case bottomLeft = "Bottom-Left"
+        case bottomCenter = "Bottom"
+        case bottomRight = "Bottom-Right"
+    }
+
+    enum FontScale: String, CaseIterable {
+        case small
+        case medium
+        case large
+
+        var multiplier: CGFloat {
+            switch self {
+            case .small:
+                return 0.75
+            case .medium:
+                return 1.0
+            case .large:
+                return 1.5
+            }
+        }
     }
 }

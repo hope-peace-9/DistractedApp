@@ -1,0 +1,67 @@
+/* App */
+"app.name" = "分心了麼？";
+"app.displayName" = "Distracted? (分心了麼)";
+
+/* Minimal menu bar */
+"menu.toggle" = "開關";
+"menu.settings" = "設定...";
+"menu.quit" = "結束";
+"menu.about" = "分心了麼？";
+
+/* Legacy menu labels */
+"menu.position" = "位置";
+"menu.interval" = "間隔";
+"menu.duration" = "停留時間";
+"menu.duration.full" = "停留時間";
+"menu.custom" = "自訂...";
+
+/* About */
+"about.title" = "分心了麼？";
+"about.message" = "一眼找回時間感。";
+"about.summary" = "每 %d 分鐘 · 停留 %d 秒 · %@";
+"about.version" = "v%@";
+
+/* Settings window */
+"settings.window.title" = "設定";
+"settings.sidebar.settings" = "設定";
+"settings.sidebar.about" = "關於";
+"settings.section.reminder" = "提醒";
+"settings.section.appearance" = "外觀";
+"settings.interval.label" = "間隔";
+"settings.interval.unit" = "分鐘";
+"settings.interval.placeholder" = "例如 30";
+"settings.interval.error" = "請輸入 1 到 999 之間的正整數分鐘數。";
+"settings.duration.label" = "停留時間";
+"settings.duration.unit" = "秒";
+"settings.duration.placeholder" = "例如 2";
+"settings.duration.error" = "請輸入 1 到 10 之間的正整數秒數。";
+"settings.position.label" = "位置";
+"settings.position.help" = "選擇時間出現在螢幕上的位置。";
+"settings.fontSize.label" = "字體大小";
+"settings.fontSize.small" = "小";
+"settings.fontSize.medium" = "中";
+"settings.fontSize.large" = "大";
+"settings.opacity.label" = "背景透明度";
+"settings.opacity.value" = "%d%%";
+"settings.preview.label" = "即時預覽";
+"settings.confirm" = "確認";
+
+/* Position names */
+"position.topLeft" = "左上";
+"position.topCenter" = "頂部";
+"position.topRight" = "右上";
+"position.middleLeft" = "左側";
+"position.center" = "置中";
+"position.middleRight" = "右側";
+"position.bottomLeft" = "左下";
+"position.bottomCenter" = "底部";
+"position.bottomRight" = "右下";
+
+/* Alerts */
+"alert.ok" = "確定";
+"alert.cancel" = "取消";
+"alert.invalidInput.title" = "輸入無效";
+"alert.customInterval.title" = "自訂間隔";
+"alert.customInterval.message" = "請輸入分鐘數 (1 - %d)：";
+"alert.customDuration.title" = "自訂停留時間";
+"alert.customDuration.message" = "請輸入秒數 (1 - %d)：";

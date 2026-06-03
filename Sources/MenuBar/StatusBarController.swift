@@ -1,42 +1,35 @@
 import Cocoa
 
 // ═══════════════════════════════════════════════════════════════
-//  StatusBarController — Menu bar icon & interactive menu
+//  StatusBarController — minimal Phase 3 menu bar surface
 // ═══════════════════════════════════════════════════════════════
 //
-//  [EN] Because LSUIElement = YES hides the Dock icon and menu bar,
-//       this status item is the **only** way the user can quit the app.
-//       Responsibilities:
-//       1. Show a status-bar icon (SF Symbol).
-//       2. Provide Position / Interval / Duration submenus reflecting UserDefaults.
-//       3. Custom input dialogs with validation.
-//       4. Notify listeners on preference changes.
+//  [EN] LSUIElement apps need a reliable menu-bar exit path. Phase 3
+//       keeps the menu tiny: Toggle, Settings..., Quit.
 //
-//  [CN] 由于 LSUIElement = YES 隐藏了 Dock 图标和全局菜单栏，
-//       该状态栏图标是用户退出应用的**唯一**入口。
-//       职责：渲染菜单、读写 UserDefaults、回调通知。
+//  [CN] LSUIElement 应用必须保留可靠的菜单栏退出入口。Phase 3
+//       将菜单压缩为：开关、设置、退出。
 //
-//  [JP] LSUIElement = YES のため Dock アイコンとメニューバーは非表示。
-//       このステータスアイテムが終了の**唯一**の手段です。
+//  [JP] LSUIElement アプリには確実な終了導線が必要。Phase 3 では
+//       メニューを「切替、設定、終了」に絞る。
 // ═══════════════════════════════════════════════════════════════
 
-final class StatusBarController {
+final class StatusBarController: NSObject {
 
     // MARK: - Properties
 
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
+    private weak var toggleSwitch: NSSwitch?
+    private var isToggleOn = PreferencesStore.shared.isEnabled
 
-    /// [EN] Callbacks wired from AppDelegate to propagate changes.
-    /// [CN] 由 AppDelegate 挂载的回调，用于传递变更。
-    /// [JP] AppDelegate から設定されるコールバック。
-    var onIntervalChange: ((TimeInterval) -> Void)?
-    var onPositionChange: ((String) -> Void)?
-    var onDurationChange: ((Int) -> Void)?
+    var onToggleChange: ((Bool) -> Void)?
+    var onSettingsRequested: (() -> Void)?
 
     // MARK: - Init
 
-    init() {
+    override init() {
+        super.init()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         configureButton()
         rebuildMenu()
@@ -48,45 +41,38 @@ final class StatusBarController {
         }
     }
 
+    // MARK: - Public API
+
+    func updateToggle(isOn: Bool) {
+        isToggleOn = isOn
+        refreshToggleView()
+    }
+
     // MARK: - Button
 
     private func configureButton() {
         guard let button = statusItem?.button else { return }
         let image = NSImage(systemSymbolName: "clock.badge.questionmark",
-                            accessibilityDescription: "Distracted?")
+                            accessibilityDescription: L10n.appName)
         image?.isTemplate = true
         button.image = image
     }
 
-    // MARK: - Menu (full rebuild on every change)
+    // MARK: - Menu
 
-    /// [EN] Rebuild the entire menu tree to reflect the latest UserDefaults state.
-    /// [CN] 完整重建菜单树，以反映最新的 UserDefaults 状态。
-    /// [JP] 最新の UserDefaults 状態を反映するためメニュー全体を再構築。
-    func rebuildMenu() {
-        let m = NSMenu(title: "Distracted?")
-
-        // ── About ─────────────────────────────────────────────
-        let aboutItem = NSMenuItem(title: "About Distracted?",
-                                   action: #selector(showAbout),
-                                   keyEquivalent: "")
-        aboutItem.target = self
-        m.addItem(aboutItem)
+    private func rebuildMenu() {
+        let m = NSMenu(title: L10n.appName)
+        m.delegate = self
+        m.addItem(makeToggleItem())
         m.addItem(.separator())
 
-        // ── Position submenu (6 options) ──────────────────────
-        buildPositionSubmenu(parent: m)
+        let settingsItem = NSMenuItem(title: L10n.menuSettings,
+                                      action: #selector(openSettings),
+                                      keyEquivalent: ",")
+        settingsItem.target = self
+        m.addItem(settingsItem)
 
-        // ── Interval submenu (presets + Custom) ───────────────
-        buildIntervalSubmenu(parent: m)
-
-        // ── Duration submenu (presets + Custom) ───────────────
-        buildDurationSubmenu(parent: m)
-
-        m.addItem(.separator())
-
-        // ── Quit ──────────────────────────────────────────────
-        let quitItem = NSMenuItem(title: "Quit",
+        let quitItem = NSMenuItem(title: L10n.menuQuit,
                                   action: #selector(quitApp),
                                   keyEquivalent: "q")
         quitItem.target = self
@@ -96,267 +82,119 @@ final class StatusBarController {
         menu = m
     }
 
-    // MARK: - Submenu builders
+    private func makeToggleItem() -> NSMenuItem {
+        let item = NSMenuItem()
+        let row = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 34))
 
-    /// [EN] Build the Position submenu with checkmark on the active option.
-    /// [CN] 构建位置子菜单，当前选中项显示勾号。
-    /// [JP] 位置サブメニューを構築、アクティブな項目にチェックマーク。
-    private func buildPositionSubmenu(parent: NSMenu) {
-        let currentPos = storedPosition()
-        let posMenu = NSMenu(title: "Position")
-        for pos in Constants.Position.allCases {
-            let raw = pos.rawValue
-            let item = NSMenuItem(title: raw,
-                                  action: #selector(didSelectPosition(_:)),
-                                  keyEquivalent: "")
-            item.target = self
-            item.representedObject = raw
-            if raw == currentPos {
-                item.state = .on
-            }
-            posMenu.addItem(item)
-        }
-        let container = NSMenuItem(title: "Position", action: nil, keyEquivalent: "")
-        container.submenu = posMenu
-        parent.addItem(container)
+        let label = NSTextField(labelWithString: L10n.menuToggle)
+        label.font = .systemFont(ofSize: NSFont.systemFontSize)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let switchControl = NSSwitch()
+        switchControl.state = isToggleOn ? .on : .off
+        switchControl.isEnabled = true
+        switchControl.target = self
+        switchControl.action = #selector(toggleChanged(_:))
+        switchControl.controlSize = .regular
+        switchControl.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(label)
+        row.addSubview(switchControl)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            label.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            switchControl.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -12),
+            switchControl.centerYAnchor.constraint(equalTo: row.centerYAnchor)
+        ])
+
+        item.view = row
+        toggleSwitch = switchControl
+        return item
     }
 
-    /// [EN] Build the Interval submenu (presets + Custom…).
-    /// [CN] 构建间隔子菜单（预设值 + 自定义…）。
-    /// [JP] 間隔サブメニューを構築（プリセット + カスタム…）。
-    private func buildIntervalSubmenu(parent: NSMenu) {
-        let currentInterval = storedIntervalMinutes()
-        let intMenu = NSMenu(title: "Interval")
-
-        for preset in Constants.intervalPresets {
-            let label = "\(preset) min"
-            let item = NSMenuItem(title: label,
-                                  action: #selector(didSelectIntervalPreset(_:)),
-                                  keyEquivalent: "")
-            item.target = self
-            item.representedObject = preset
-            if preset == currentInterval {
-                item.state = .on
-            }
-            intMenu.addItem(item)
-        }
-
-        intMenu.addItem(.separator())
-
-        let customItem = NSMenuItem(title: "Custom…",
-                                    action: #selector(didRequestCustomInterval),
-                                    keyEquivalent: "")
-        customItem.target = self
-        if !Constants.intervalPresets.contains(currentInterval) {
-            customItem.state = .on
-        }
-        intMenu.addItem(customItem)
-
-        let container = NSMenuItem(title: "Interval", action: nil, keyEquivalent: "")
-        container.submenu = intMenu
-        parent.addItem(container)
+    private func refreshToggleView() {
+        guard let toggleSwitch else { return }
+        toggleSwitch.isEnabled = true
+        toggleSwitch.state = isToggleOn ? .on : .off
     }
 
-    /// [EN] Build the Duration submenu (presets + Custom…).
-    /// [CN] 构建停留时间子菜单（预设值 + 自定义…）。
-    /// [JP] 持続時間サブメニューを構築（プリセット + カスタム…）。
-    private func buildDurationSubmenu(parent: NSMenu) {
-        let currentDuration = storedDurationSeconds()
-        let durMenu = NSMenu(title: "Duration (停留时间)")
-
-        for preset in Constants.durationPresets {
-            let label = "\(preset)s"
-            let item = NSMenuItem(title: label,
-                                  action: #selector(didSelectDurationPreset(_:)),
-                                  keyEquivalent: "")
-            item.target = self
-            item.representedObject = preset
-            if preset == currentDuration {
-                item.state = .on
-            }
-            durMenu.addItem(item)
-        }
-
-        durMenu.addItem(.separator())
-
-        let customItem = NSMenuItem(title: "Custom…",
-                                    action: #selector(didRequestCustomDuration),
-                                    keyEquivalent: "")
-        customItem.target = self
-        if !Constants.durationPresets.contains(currentDuration) {
-            customItem.state = .on
-        }
-        durMenu.addItem(customItem)
-
-        let container = NSMenuItem(title: "Duration (停留时间)",
-                                   action: nil, keyEquivalent: "")
-        container.submenu = durMenu
-        parent.addItem(container)
-    }
-
-    // MARK: - Position actions
+    // MARK: - Actions
 
     @objc
-    private func didSelectPosition(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String else { return }
-        UserDefaults.standard.set(raw, forKey: Constants.UserDefaultsKey.position)
-        print("[Distracted] Position changed to: \(raw)")
-        onPositionChange?(raw)
-        rebuildMenu()
+    private func toggleChanged(_ sender: NSSwitch) {
+        isToggleOn = sender.state == .on
+        refreshToggleView()
+        onToggleChange?(isToggleOn)
     }
-
-    // MARK: - Interval actions
 
     @objc
-    private func didSelectIntervalPreset(_ sender: NSMenuItem) {
-        guard let minutes = sender.representedObject as? Int else { return }
-        saveAndApplyInterval(minutes)
-    }
-
-    /// [EN] Validate, persist, and apply a custom interval value.
-    /// [CN] 校验、持久化并应用自定义间隔值。
-    /// [JP] カスタム間隔の検証・保存・適用。
-    @objc
-    private func didRequestCustomInterval() {
-        let alert = NSAlert()
-        alert.messageText = "Custom Interval"
-        alert.informativeText = "Enter minutes (1 – 1440):"
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Cancel")
-
-        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 140, height: 24))
-        textField.placeholderString = "e.g. 45"
-        textField.stringValue = "\(storedIntervalMinutes())"
-        alert.accessoryView = textField
-
-        let resp = alert.runModal()
-        guard resp == .alertFirstButtonReturn else { return }
-
-        let raw = textField.stringValue.trimmingCharacters(in: .whitespaces)
-
-        guard let minutes = Int(raw), minutes >= 1, minutes <= 1440 else {
-            let errAlert = NSAlert()
-            errAlert.messageText = "Invalid Input"
-            errAlert.informativeText = "Please enter a whole number between 1 and 1440."
-            errAlert.alertStyle = .critical
-            errAlert.addButton(withTitle: "OK")
-            errAlert.runModal()
-            return
-        }
-
-        saveAndApplyInterval(minutes)
-    }
-
-    private func saveAndApplyInterval(_ minutes: Int) {
-        UserDefaults.standard.set(minutes, forKey: Constants.UserDefaultsKey.intervalMinutes)
-        print("[Distracted] Interval changed to: \(minutes) min")
-        let intervalSeconds = TimeInterval(minutes * 60)
-        onIntervalChange?(intervalSeconds)
-        rebuildMenu()
-    }
-
-    // MARK: - Duration actions
-
-    @objc
-    private func didSelectDurationPreset(_ sender: NSMenuItem) {
-        guard let seconds = sender.representedObject as? Int else { return }
-        saveAndApplyDuration(seconds)
-    }
-
-    /// [EN] Custom duration input: NSAlert with NSTextField, validate 1–10.
-    /// [CN] 自定义停留时间输入：NSAlert + NSTextField，校验 1～10 秒。
-    /// [JP] カスタム持続時間入力：NSAlert + NSTextField、1～10 秒の検証。
-    @objc
-    private func didRequestCustomDuration() {
-        let alert = NSAlert()
-        alert.messageText = "Custom Duration"
-        alert.informativeText = "Enter seconds (1 – 10):"
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Cancel")
-
-        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 140, height: 24))
-        textField.placeholderString = "e.g. 3"
-        textField.stringValue = "\(storedDurationSeconds())"
-        alert.accessoryView = textField
-
-        let resp = alert.runModal()
-        guard resp == .alertFirstButtonReturn else { return }
-
-        let raw = textField.stringValue.trimmingCharacters(in: .whitespaces)
-
-        guard let seconds = Int(raw),
-              seconds >= Constants.durationMin,
-              seconds <= Constants.durationMax else {
-            let errAlert = NSAlert()
-            errAlert.messageText = "Invalid Input"
-            errAlert.informativeText = "Please enter a whole number between \(Constants.durationMin) and \(Constants.durationMax)."
-            errAlert.alertStyle = .critical
-            errAlert.addButton(withTitle: "OK")
-            errAlert.runModal()
-            return
-        }
-
-        saveAndApplyDuration(seconds)
-    }
-
-    /// [EN] Shared helper: persist to UserDefaults, fire callback, rebuild menu.
-    /// [CN] 通用助手：写入 UserDefaults、触发回调、重建菜单。
-    /// [JP] 共通ヘルパー：UserDefaults に保存、コールバック実行、メニュー再構築。
-    private func saveAndApplyDuration(_ seconds: Int) {
-        UserDefaults.standard.set(seconds, forKey: Constants.UserDefaultsKey.durationSeconds)
-        print("[Distracted] Duration changed to: \(seconds)s")
-        onDurationChange?(seconds)
-        rebuildMenu()
-    }
-
-    // MARK: - UserDefaults helpers
-
-    /// [EN] Read stored interval in minutes; fall back to 30.
-    /// [CN] 读取持久化的间隔分钟数，默认 30 分钟。
-    /// [JP] 保存された間隔（分）を読む。デフォルトは30分。
-    private func storedIntervalMinutes() -> Int {
-        let stored = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKey.intervalMinutes)
-        return stored > 0 ? stored : 30
-    }
-
-    /// [EN] Read stored position; fall back to "Center".
-    /// [CN] 读取持久化的位置；默认 "Center"。
-    /// [JP] 保存された位置を読む。デフォルトは "Center"。
-    private func storedPosition() -> String {
-        UserDefaults.standard.string(forKey: Constants.UserDefaultsKey.position)
-            ?? Constants.Position.center.rawValue
-    }
-
-    /// [EN] Read stored duration in seconds; fall back to default 2.
-    /// [CN] 读取持久化的停留秒数；默认 2 秒。
-    /// [JP] 保存された持続時間（秒）を読む。デフォルトは2秒。
-    private func storedDurationSeconds() -> Int {
-        let stored = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKey.durationSeconds)
-        return stored > 0 ? stored : Constants.defaultDurationSeconds
-    }
-
-    // MARK: - Other actions
-
-    @objc
-    private func showAbout() {
-        let dur = storedDurationSeconds()
-        let int = storedIntervalMinutes()
-        let pos = storedPosition()
-        let alert = NSAlert()
-        alert.messageText = "Distracted? (分心了么)"
-        alert.informativeText = """
-        Time awareness at a glance.
-
-        v1.0.0
-        Every \(int) min · \(dur)s duration · \(pos)
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+    private func openSettings() {
+        onSettingsRequested?()
     }
 
     @objc
     private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+}
+
+// MARK: - NSMenuDelegate
+
+extension StatusBarController: NSMenuDelegate {
+
+    func menuWillOpen(_ menu: NSMenu) {
+        // [EN] Root-cause fix for the "first menu open shows gray switch track" bug.
+        //
+        //      NSSwitch reads `NSApp.isActive` when deciding whether to paint the
+        //      `controlAccentColor` track (on, active) or the gray inactive track.
+        //      For LSUIElement apps, clicking the status-bar item shows the menu
+        //      but does NOT flip NSApp into the active state — so on first menu
+        //      open the switch renders gray even though its state is `.on`.
+        //      Opening the Settings window indirectly fixed it because
+        //      `showAndFocus()` calls `NSApp.activate(...)`, and that activation
+        //      persists. We activate explicitly here so the first menu open is
+        //      already in the active context.
+        //
+        //      Note: AppDelegate also primes NSApp at launch, but a user may
+        //      switch to another app and back; in that case NSApp can be inactive
+        //      again. This call guarantees the menu is always in the active
+        //      context regardless of what happened between opens.
+        //
+        // [CN] 首次打开菜单时开关轨迹呈灰色的根因修复。
+        //
+        //      NSSwitch 决定要画 `controlAccentColor` 轨迹（on/active）还是
+        //      失效灰轨迹时，读取的是 `NSApp.isActive`。对 LSUIElement 应用，
+        //      点击状态栏图标会弹菜单，但**不会**把 NSApp 切到 active —
+        //      所以首次弹出时开关明明 `state = .on`，看上去却是灰的。
+        //      之前打开设置窗口能间接修好，是因为 `showAndFocus()` 调了
+        //      `NSApp.activate(...)`，而这个状态会延续。这里显式激活，
+        //      保证菜单首次弹出就处在 active 上下文里。
+        //
+        //      注：AppDelegate 启动时也会 prime 一次 NSApp，但用户可能切到
+        //      别的 app 再切回来，那时 NSApp 又会变成非 active。每次
+        //      menuWillOpen 都激活一次，保证不论中间发生什么，菜单弹出时
+        //      永远处于 active 上下文。
+        //
+        // [JP] 「メニュー初回オープン時にスイッチがグレー」バグの根本原因修正。
+        //
+        //      NSSwitch は `controlAccentColor` のトラック（on/active）と
+        //      グレーの非アクティブトラックのどちらを描くかを決める際、
+        //      `NSApp.isActive` を参照する。LSUIElement アプリでは
+        //      ステータスバーアイコンクリックでメニューは表示されるが、
+        //      NSApp は active にならない。そのため初回オープン時、
+        //      `state = .on` でもスイッチがグレーで描画される。
+        //      設定ウィンドウを開くと直る理由は `showAndFocus()` が
+        //      `NSApp.activate(...)` を呼ぶためで、その状態は持続する。
+        //      ここで明示的に activate することで、初回からアクティブな
+        //      コンテキストでメニューを開けるようにする。
+        //
+        //      AppDelegate 起動時も prime しているが、ユーザーが他のアプリに
+        //      切り替えて戻ると NSApp は再び非 active になりうる。毎回
+        //      menuWillOpen で activate しておけば、間に何が起きても
+        //      メニュー表示時は常に active コンテキストになる。
+        NSApp.activate(ignoringOtherApps: true)
+
+        isToggleOn = PreferencesStore.shared.isEnabled
+        refreshToggleView()
     }
 }

@@ -1,0 +1,67 @@
+/* App */
+"app.name" = "時間、忘れてない？";
+"app.displayName" = "Distracted? (時間、忘れてない？)";
+
+/* Minimal menu bar */
+"menu.toggle" = "オン/オフ";
+"menu.settings" = "設定...";
+"menu.quit" = "終了";
+"menu.about" = "時間、忘れてない？";
+
+/* Legacy menu labels */
+"menu.position" = "位置";
+"menu.interval" = "間隔";
+"menu.duration" = "表示時間";
+"menu.duration.full" = "表示時間";
+"menu.custom" = "カスタム...";
+
+/* About */
+"about.title" = "時間、忘れてない？";
+"about.message" = "ひと目で時間感覚を取り戻す。";
+"about.summary" = "%d分ごと · %d秒表示 · %@";
+"about.version" = "v%@";
+
+/* Settings window */
+"settings.window.title" = "設定";
+"settings.sidebar.settings" = "設定";
+"settings.sidebar.about" = "このアプリについて";
+"settings.section.reminder" = "リマインダー";
+"settings.section.appearance" = "外観";
+"settings.interval.label" = "間隔";
+"settings.interval.unit" = "分";
+"settings.interval.placeholder" = "例: 30";
+"settings.interval.error" = "1から999までの整数の分数を入力してください。";
+"settings.duration.label" = "表示時間";
+"settings.duration.unit" = "秒";
+"settings.duration.placeholder" = "例: 2";
+"settings.duration.error" = "1から10までの整数の秒数を入力してください。";
+"settings.position.label" = "位置";
+"settings.position.help" = "時刻を画面のどこに表示するか選択します。";
+"settings.fontSize.label" = "文字サイズ";
+"settings.fontSize.small" = "小";
+"settings.fontSize.medium" = "中";
+"settings.fontSize.large" = "大";
+"settings.opacity.label" = "背景の不透明度";
+"settings.opacity.value" = "%d%%";
+"settings.preview.label" = "ライブプレビュー";
+"settings.confirm" = "確認";
+
+/* Position names */
+"position.topLeft" = "左上";
+"position.topCenter" = "上";
+"position.topRight" = "右上";
+"position.middleLeft" = "左";
+"position.center" = "中央";
+"position.middleRight" = "右";
+"position.bottomLeft" = "左下";
+"position.bottomCenter" = "下";
+"position.bottomRight" = "右下";
+
+/* Alerts */
+"alert.ok" = "OK";
+"alert.cancel" = "キャンセル";
+"alert.invalidInput.title" = "入力が無効です";
+"alert.customInterval.title" = "カスタム間隔";
+"alert.customInterval.message" = "分数を入力してください (1 - %d):";
+"alert.customDuration.title" = "カスタム表示時間";
+"alert.customDuration.message" = "秒数を入力してください (1 - %d):";

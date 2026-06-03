@@ -34,6 +34,13 @@ final class TimeOverlayWindow: NSWindow {
     /// [CN] 防重入守卫：动画进行中忽略一切新触发。
     /// [JP] 再入防止フラグ：アニメーション中は新規呼び出しを無視。
     private var isAnimating = false
+    private var animationGeneration = 0
+
+    private static let timeFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm"
+        return fmt
+    }()
 
     // ── Init ──────────────────────────────────────────────────
 
@@ -75,15 +82,23 @@ final class TimeOverlayWindow: NSWindow {
     ///      マウスカーソルがある画面を優先、なければメイン画面。
     ///
     /// - Parameter position: One of the six Constants.Position raw values.
-    func positionOnActiveScreen(position: String = Constants.Position.center.rawValue) {
+    func positionOnActiveScreen(position: String = Constants.OverlayPosition.center.rawValue) {
+        let normalized = Constants.OverlayPosition(rawValue: position) ?? .center
+        positionOnActiveScreen(position: normalized,
+                               fontScale: PreferencesStore.shared.fontScale)
+    }
+
+    private func positionOnActiveScreen(position: Constants.OverlayPosition,
+                                        fontScale: Constants.FontScale) {
         guard let screen = bestTargetScreen() else { return }
 
         // [EN] Use visibleFrame to account for menu bar and Dock.
         // [CN] 使用 visibleFrame 以避开菜单栏和 Dock。
         // [JP] メニューバーとDockを考慮し visibleFrame を使用。
         let sf = screen.visibleFrame
-        let w = Constants.overlayWidth
-        let h = Constants.overlayHeight
+        let scale = fontScale.multiplier
+        let w = Constants.overlayWidth * scale
+        let h = Constants.overlayHeight * scale
         let inset = Constants.positionInset
 
         // [EN] Calculate origin based on position preset.
@@ -93,30 +108,42 @@ final class TimeOverlayWindow: NSWindow {
         let originY: CGFloat
 
         switch position {
-        case Constants.Position.topLeft.rawValue:
+        case .topLeft:
             originX = sf.origin.x + inset
             originY = sf.origin.y + sf.height - h - inset
 
-        case Constants.Position.top.rawValue:
+        case .topCenter:
             originX = sf.origin.x + (sf.width - w) / 2
             originY = sf.origin.y + sf.height - h - inset
 
-        case Constants.Position.topRight.rawValue:
+        case .topRight:
             originX = sf.origin.x + sf.width - w - inset
             originY = sf.origin.y + sf.height - h - inset
 
-        case Constants.Position.bottomLeft.rawValue:
+        case .middleLeft:
+            originX = sf.origin.x + inset
+            originY = sf.origin.y + (sf.height - h) / 2
+
+        case .middleRight:
+            originX = sf.origin.x + sf.width - w - inset
+            originY = sf.origin.y + (sf.height - h) / 2
+
+        case .bottomLeft:
             originX = sf.origin.x + inset
             originY = sf.origin.y + inset
 
-        case Constants.Position.bottomRight.rawValue:
+        case .bottomCenter:
+            originX = sf.origin.x + (sf.width - w) / 2
+            originY = sf.origin.y + inset
+
+        case .bottomRight:
             originX = sf.origin.x + sf.width - w - inset
             originY = sf.origin.y + inset
 
         // [EN] Default (and "Center") — centred both axes.
         // [CN] 默认及 "Center" —— 水平垂直居中。
         // [JP] デフォルト（"Center"）—— 縦横とも中央。
-        default:
+        case .center:
             originX = sf.origin.x + (sf.width - w) / 2
             originY = sf.origin.y + (sf.height - h) / 2
         }
@@ -155,33 +182,32 @@ final class TimeOverlayWindow: NSWindow {
             return
         }
         isAnimating = true
+        animationGeneration += 1
+        let generation = animationGeneration
 
         guard let contentView = self.contentView as? TimeOverlayView else {
             isAnimating = false
             return
         }
 
+        let configuration = OverlayConfiguration(preferences: PreferencesStore.shared)
+        applyAppearance(configuration, to: contentView)
+
         // [EN] Read user's position preference from UserDefaults.
         // [CN] 从 UserDefaults 读取用户位置偏好。
         // [JP] UserDefaults から位置設定を読み込む。
-        let position = UserDefaults.standard.string(forKey: Constants.UserDefaultsKey.position)
-                       ?? Constants.Position.center.rawValue
-        positionOnActiveScreen(position: position)
+        positionOnActiveScreen(position: configuration.position,
+                               fontScale: configuration.fontScale)
 
         // [EN] Update time string (HH:mm format — concise, glanceable).
         // [CN] 更新时间字符串（HH:mm 格式 — 简洁、一目了然）。
         // [JP] 時刻文字列を更新（HH:mm 形式 — 簡潔で一目瞭然）。
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm"
-        contentView.updateTime(fmt.string(from: Date()))
+        contentView.updateTime(Self.timeFormatter.string(from: Date()))
 
         // [EN] Read hold duration from UserDefaults (seconds). Clamp to valid range.
         // [CN] 从 UserDefaults 读取停留时长（秒）。限制在有效范围内。
         // [JP] UserDefaults から表示維持時間（秒）を読み込み。有効範囲に収める。
-        var holdDuration = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKey.durationSeconds)
-        if holdDuration < Constants.durationMin || holdDuration > Constants.durationMax {
-            holdDuration = Constants.defaultDurationSeconds
-        }
+        let holdDuration = PreferencesStore.shared.durationSeconds
 
         // [EN] Ensure window starts invisible before fade-in.
         // [CN] 确保窗口在淡入前初始为不可见。
@@ -205,6 +231,7 @@ final class TimeOverlayWindow: NSWindow {
         // [JP] ユーザー設定の停止時間経過後、不透明度を 1 → 0 にアニメーション。
         DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(holdDuration)) { [weak self] in
             guard let self = self else { return }
+            guard self.animationGeneration == generation else { return }
 
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = Constants.fadeOutDuration
@@ -212,6 +239,7 @@ final class TimeOverlayWindow: NSWindow {
                 self.animator().alphaValue = 0.0
             } completionHandler: { [weak self] in
                 guard let self = self else { return }
+                guard self.animationGeneration == generation else { return }
                 self.orderOut(nil)
                 // [EN] Release re-entrancy guard.
                 // [CN] 释放防重入锁。
@@ -219,6 +247,49 @@ final class TimeOverlayWindow: NSWindow {
                 self.isAnimating = false
             }
         }
+
+        // [EN] Safety release in case animation completion is dropped during sleep/screen changes.
+        // [CN] 安全兜底：防止休眠或屏幕变化导致动画 completion 丢失后永久锁死。
+        // [JP] スリープや画面変更で completion が失われた場合の安全解除。
+        let timeout = TimeInterval(holdDuration) + Constants.fadeInDuration + Constants.fadeOutDuration + 1.0
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
+            guard let self = self else { return }
+            guard self.animationGeneration == generation else { return }
+            self.isAnimating = false
+        }
+    }
+
+    /// [EN] Show a persistent overlay for Settings live preview.
+    /// [CN] 为设置页实时预览显示常驻弹窗。
+    /// [JP] 設定画面のライブプレビュー用に常時表示する。
+    func showPreview(configuration: OverlayConfiguration = OverlayConfiguration(preferences: PreferencesStore.shared)) {
+        animationGeneration += 1
+        isAnimating = false
+
+        guard let contentView = self.contentView as? TimeOverlayView else { return }
+        applyAppearance(configuration, to: contentView)
+        contentView.updateTime(Self.timeFormatter.string(from: Date()))
+        positionOnActiveScreen(position: configuration.position,
+                               fontScale: configuration.fontScale)
+
+        alphaValue = 1.0
+        orderFront(nil)
+    }
+
+    /// [EN] Immediately hide the overlay and invalidate pending animation callbacks.
+    /// [CN] 立即隐藏弹窗，并使尚未执行的动画回调失效。
+    /// [JP] オーバーレイを即座に隠し、保留中のアニメーションコールバックを無効化。
+    func hideImmediately() {
+        animationGeneration += 1
+        isAnimating = false
+        alphaValue = 0.0
+        orderOut(nil)
+    }
+
+    private func applyAppearance(_ configuration: OverlayConfiguration, to contentView: TimeOverlayView) {
+        let scale = configuration.fontScale.multiplier
+        let opacity = CGFloat(configuration.backgroundOpacity)
+        contentView.applyAppearance(fontScale: scale, backgroundOpacity: opacity)
     }
 }
 
@@ -276,5 +347,12 @@ private final class TimeOverlayView: NSView {
 
     func updateTime(_ string: String) {
         timeLabel.stringValue = string
+    }
+
+    func applyAppearance(fontScale: CGFloat, backgroundOpacity: CGFloat) {
+        timeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: Constants.timeFontSize * fontScale,
+                                                          weight: .bold)
+        layer?.backgroundColor = NSColor.black.withAlphaComponent(backgroundOpacity).cgColor
+        layer?.cornerRadius = 28 * fontScale
     }
 }

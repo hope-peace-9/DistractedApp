@@ -1,0 +1,67 @@
+/* App */
+"app.name" = "Distracted?";
+"app.displayName" = "Distracted?";
+
+/* Minimal menu bar */
+"menu.toggle" = "Toggle";
+"menu.settings" = "Settings...";
+"menu.quit" = "Quit";
+"menu.about" = "About Distracted?";
+
+/* Legacy menu labels */
+"menu.position" = "Position";
+"menu.interval" = "Interval";
+"menu.duration" = "Duration";
+"menu.duration.full" = "Duration";
+"menu.custom" = "Custom...";
+
+/* About */
+"about.title" = "About Distracted?";
+"about.message" = "Time awareness at a glance.";
+"about.summary" = "Every %d min · %ds duration · %@";
+"about.version" = "v%@";
+
+/* Settings window */
+"settings.window.title" = "Settings";
+"settings.sidebar.settings" = "Settings";
+"settings.sidebar.about" = "About";
+"settings.section.reminder" = "Reminder";
+"settings.section.appearance" = "Appearance";
+"settings.interval.label" = "Interval";
+"settings.interval.unit" = "min";
+"settings.interval.placeholder" = "e.g. 30";
+"settings.interval.error" = "Enter a whole number between 1 and 999 minutes.";
+"settings.duration.label" = "Duration";
+"settings.duration.unit" = "sec";
+"settings.duration.placeholder" = "e.g. 2";
+"settings.duration.error" = "Enter a whole number between 1 and 10 seconds.";
+"settings.position.label" = "Position";
+"settings.position.help" = "Choose where the time appears on screen.";
+"settings.fontSize.label" = "Font Size";
+"settings.fontSize.small" = "Small";
+"settings.fontSize.medium" = "Medium";
+"settings.fontSize.large" = "Large";
+"settings.opacity.label" = "Background Opacity";
+"settings.opacity.value" = "%d%%";
+"settings.preview.label" = "Live Preview";
+"settings.confirm" = "Confirm";
+
+/* Position names */
+"position.topLeft" = "Top Left";
+"position.topCenter" = "Top";
+"position.topRight" = "Top Right";
+"position.middleLeft" = "Left";
+"position.center" = "Center";
+"position.middleRight" = "Right";
+"position.bottomLeft" = "Bottom Left";
+"position.bottomCenter" = "Bottom";
+"position.bottomRight" = "Bottom Right";
+
+/* Alerts */
+"alert.ok" = "OK";
+"alert.cancel" = "Cancel";
+"alert.invalidInput.title" = "Invalid Input";
+"alert.customInterval.title" = "Custom Interval";
+"alert.customInterval.message" = "Enter minutes (1 - %d):";
+"alert.customDuration.title" = "Custom Duration";
+"alert.customDuration.message" = "Enter seconds (1 - %d):";
