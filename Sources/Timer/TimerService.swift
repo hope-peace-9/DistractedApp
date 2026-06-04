@@ -88,13 +88,13 @@ final class TimerService {
 
     /// [EN] Schedule the next flash.
     ///      If targetDate is set and still in the future, use it directly.
-    ///      Otherwise compute the next interval boundary from now.
+    ///      Otherwise compute a full interval from now.
     /// [CN] 调度下一次闪烁。
     ///      如果 targetDate 已设定且仍在未来，直接使用。
-    ///      否则从当前时间计算下一个间隔边界。
+    ///      否则从当前时间开始计算一个完整间隔。
     /// [JP] 次回点滅を予約。
     ///      targetDate が設定済みで未来の時刻ならそのまま使用。
-    ///      そうでなければ現在時刻から次のインターバル境界を計算。
+    ///      そうでなければ現在時刻から完全なインターバルを計算。
     private func scheduleNextLocked() {
         guard !isPaused else { return }
 
@@ -106,25 +106,27 @@ final class TimerService {
             // [JP] 有効な未来の目標あり → そのまま設定。
             armTimerLocked(for: target)
         } else {
-            // [EN] No target or target is in the past → align to next interval boundary.
-            // [CN] 无目标或目标已过期 → 对齐到下一个间隔边界。
-            // [JP] 目標がない、または過去の時刻 → 次のインターバル境界に合わせる。
-            let next = nextIntervalBoundary(after: now)
+            // [EN] No target or target is in the past → start a full interval from now.
+            // [CN] 无目标或目标已过期 → 从当前时刻开始完整计算一个间隔。
+            // [JP] 目標がない、または過去の時刻 → 現在時刻から完全な間隔を開始する。
+            let next = nextTargetFromNow()
             targetDate = next
             armTimerLocked(for: next)
         }
     }
 
-    /// [EN] Align `date` to the next whole interval boundary (epoch‑based maths).
-    ///      e.g. interval=300s, now=09:03:22 → next=09:05:00
-    /// [CN] 将时间对齐到下一个完整间隔边界（基于 epoch 时间戳计算）。
-    ///      例如：interval=300s, now=09:03:22 → next=09:05:00
-    /// [JP] 時刻を次のインターバル境界に揃える（エポックベースの計算）。
-    ///      例：interval=300s, now=09:03:22 → next=09:05:00
-    private func nextIntervalBoundary(after date: Date) -> Date {
-        let epoch = date.timeIntervalSince1970
-        let intervals = ceil(epoch / interval)
-        return Date(timeIntervalSince1970: intervals * interval)
+    private func nextTargetFromNow() -> Date {
+        Date().addingTimeInterval(interval)
+    }
+
+    private func nextTargetAfterFire(previousTarget: Date?) -> Date {
+        let now = Date()
+        guard let previousTarget else {
+            return now.addingTimeInterval(interval)
+        }
+
+        let next = previousTarget.addingTimeInterval(interval)
+        return next > now ? next : now.addingTimeInterval(interval)
     }
 
     /// [EN] Create a one-shot DispatchSourceTimer that fires at `date`.
@@ -144,6 +146,8 @@ final class TimerService {
             guard let self = self else { return }
             guard !self.isPaused else { return }
 
+            let firedTarget = self.targetDate
+
             // [EN] Fire the callback on the main thread (UI updates must happen there).
             // [CN] 在主线程触发回调（UI 更新必须在此进行）。
             // [JP] メインスレッドでコールバックを実行（UI更新はここで行うこと）。
@@ -151,10 +155,11 @@ final class TimerService {
                 self.onFlash?()
             }
 
-            // [EN] Advance target for the next tick and schedule it.
-            // [CN] 推进到下一个边界，准备下一轮触发。
-            // [JP] 次回ティックのために次の境界に進める。
-            self.targetDate = nil
+            // [EN] Advance by one full interval from the previous target so cadence stays
+            //      anchored to the user's reset moment.
+            // [CN] 从上一次目标时间推进一个完整间隔，让节奏锚定在用户重置的那一刻。
+            // [JP] 前回の目標時刻から完全な間隔を進め、ユーザーのリセット時点にリズムを固定する。
+            self.targetDate = self.nextTargetAfterFire(previousTarget: firedTarget)
             self.scheduleNextLocked()
         }
         t.resume()
@@ -194,6 +199,26 @@ final class TimerService {
             }
             self.scheduleNextLocked()
             print("[Distracted] Timer resumed")
+        }
+    }
+
+    /// [EN] Start a fresh full interval from the exact user action moment.
+    ///      Used after confirming settings or turning reminders back on.
+    /// [CN] 从用户动作发生的那一刻开始一个全新的完整间隔。
+    ///      用于确认设置或重新开启提醒后。
+    /// [JP] ユーザー操作の瞬間から新しい完全なインターバルを開始する。
+    ///      設定確定やリマインダー再有効化後に使用する。
+    func restart(interval newInterval: TimeInterval? = nil) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+            if let newInterval {
+                self.interval = max(newInterval, TimeInterval(Constants.intervalMinMinutes * 60))
+            }
+            self.isPaused = false
+            let next = self.nextTargetFromNow()
+            self.targetDate = next
+            self.armTimerLocked(for: next)
+            print("[Distracted] Timer restarted — next flash at \(next.formatted(date: .omitted, time: .standard))")
         }
     }
 
@@ -256,16 +281,10 @@ final class TimerService {
         }
     }
 
-    /// [EN] Change the interval at runtime. Resets the schedule immediately.
-    /// [CN] 运行时修改间隔。立即重置调度。
-    /// [JP] 実行中に間隔を変更。即座にスケジュールをリセット。
+    /// [EN] Change the interval at runtime and start a fresh full interval from now.
+    /// [CN] 运行时修改间隔，并从当前时刻开始一个完整的新周期。
+    /// [JP] 実行中に間隔を変更し、現在時刻から完全な新周期を開始する。
     func setInterval(_ newInterval: TimeInterval) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
-            self.interval = max(newInterval, TimeInterval(Constants.intervalMinMinutes * 60))
-            self.targetDate = nil
-            self.scheduleNextLocked()
-            print("[Distracted] Interval updated to \(Int(newInterval))s — schedule reset")
-        }
+        restart(interval: newInterval)
     }
 }

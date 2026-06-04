@@ -24,6 +24,7 @@ final class AppStateCoordinator {
 
     private var settingsWindowController: SettingsWindowController?
     private var isSettingsPreviewing = false
+    private var didConfirmSettings = false
 
     // MARK: - Init
 
@@ -69,7 +70,7 @@ final class AppStateCoordinator {
         }
 
         if isEnabled {
-            timerService.resume(recomputeFromNow: true)
+            timerService.restart(interval: preferences.intervalSeconds)
         } else {
             timerService.pause()
             overlayWindow.hideImmediately()
@@ -94,16 +95,23 @@ final class AppStateCoordinator {
         }
 
         isSettingsPreviewing = true
+        didConfirmSettings = false
         timerService.pause()
         settingsWindowController?.showAndFocus()
     }
 
     private func settingsWillClose() {
+        let confirmed = didConfirmSettings
+        didConfirmSettings = false
         isSettingsPreviewing = false
         overlayWindow.hideImmediately()
 
         if preferences.isEnabled {
-            timerService.resume(recomputeFromNow: true)
+            if confirmed {
+                timerService.restart(interval: preferences.intervalSeconds)
+            } else {
+                timerService.resume(recomputeFromNow: true)
+            }
         } else {
             timerService.pause()
         }
@@ -117,7 +125,7 @@ final class AppStateCoordinator {
 
     private func confirmDraft(_ draft: SettingsDraft) {
         draft.apply(to: preferences)
-        timerService.setInterval(preferences.intervalSeconds)
+        didConfirmSettings = true
     }
 
     // MARK: - System Events

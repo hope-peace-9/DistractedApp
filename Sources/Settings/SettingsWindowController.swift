@@ -73,6 +73,8 @@ private final class SettingsRootView: NSView {
     private let detailContainer = NSView()
     private let settingsButton = NSButton(title: L10n.settingsSidebarSettings, target: nil, action: nil)
     private let aboutButton = NSButton(title: L10n.settingsSidebarAbout, target: nil, action: nil)
+    private let settingsSelectionPill = SelectionPillView()
+    private let aboutSelectionPill    = SelectionPillView()
 
     private lazy var settingsPane = SettingsPaneView(preferences: preferences)
     private lazy var aboutPane = AboutPaneView()
@@ -102,12 +104,39 @@ private final class SettingsRootView: NSView {
 
         configureSidebarButton(settingsButton, action: #selector(showSettings))
         configureSidebarButton(aboutButton, action: #selector(showAbout))
+
+        settingsSelectionPill.translatesAutoresizingMaskIntoConstraints = false
+        aboutSelectionPill.translatesAutoresizingMaskIntoConstraints    = false
+        // [EN] Buttons first, pills last — pills sit on top in Z-order.
+        //      ignoresMouseEvents = true on each pill lets clicks fall through
+        //      to the button underneath, so interaction is unaffected.
+        // [CN] 先加按钮，后加药丸 — 药丸在 Z 轴上位于最顶层。
+        //      药丸的 ignoresMouseEvents = true 让点击穿透到下方按钮，交互不受影响。
+        // [JP] ボタンを先に追加し、ピルを後に — ピルが Z 順で最前面になる。
+        //      ピルに ignoresMouseEvents = true を設定してクリックを下のボタンに通過させる。
         sidebar.addSubview(settingsButton)
         sidebar.addSubview(aboutButton)
+        sidebar.addSubview(settingsSelectionPill)
+        sidebar.addSubview(aboutSelectionPill)
 
+        // [EN] Do NOT set wantsLayer/backgroundColor here.
+        //      CALayer.backgroundColor stores a CGColor snapshot taken at init time and
+        //      never updates when the system appearance changes — producing a frozen
+        //      dark background in light mode. A plain NSView draws nothing itself;
+        //      the window's own backgroundColor (NSColor.windowBackgroundColor, which
+        //      IS dynamic) shows through and follows appearance changes in real time.
+        // [CN] 不在这里设置 wantsLayer / backgroundColor。
+        //      CALayer.backgroundColor 保存的是初始化时拍下的 CGColor 快照，不会随
+        //      系统 appearance 变化 —— 导致明亮模式下背景冻结为深色。纯 NSView 本身
+        //      不绘制背景，窗口的 backgroundColor (NSColor.windowBackgroundColor，
+        //      本身是动态语义色) 会透过来，实时跟随系统明暗切换。
+        // [JP] ここで wantsLayer / backgroundColor を設定しない。
+        //      CALayer.backgroundColor は初期化時に取得した CGColor のスナップショットを
+        //      保持し、システムの appearance 変化で更新されない —— ライトモードで
+        //      暗い背景が固まる原因になる。素の NSView は自身では何も描画しないため、
+        //      ウィンドウの backgroundColor (NSColor.windowBackgroundColor、これは
+        //      動的なセマンティックカラー) が透けて見え、明暗切替をリアルタイムで追従する。
         detailContainer.translatesAutoresizingMaskIntoConstraints = false
-        detailContainer.wantsLayer = true
-        detailContainer.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
         addSubview(sidebar)
         addSubview(detailContainer)
@@ -131,6 +160,17 @@ private final class SettingsRootView: NSView {
             aboutButton.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -sidebarEdge),
             aboutButton.centerXAnchor.constraint(equalTo: sidebar.centerXAnchor),
 
+            // Selection pills exactly overlay their respective buttons.
+            settingsSelectionPill.topAnchor.constraint(equalTo: settingsButton.topAnchor),
+            settingsSelectionPill.bottomAnchor.constraint(equalTo: settingsButton.bottomAnchor),
+            settingsSelectionPill.leadingAnchor.constraint(equalTo: settingsButton.leadingAnchor),
+            settingsSelectionPill.trailingAnchor.constraint(equalTo: settingsButton.trailingAnchor),
+
+            aboutSelectionPill.topAnchor.constraint(equalTo: aboutButton.topAnchor),
+            aboutSelectionPill.bottomAnchor.constraint(equalTo: aboutButton.bottomAnchor),
+            aboutSelectionPill.leadingAnchor.constraint(equalTo: aboutButton.leadingAnchor),
+            aboutSelectionPill.trailingAnchor.constraint(equalTo: aboutButton.trailingAnchor),
+
             detailContainer.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
             detailContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
             detailContainer.topAnchor.constraint(equalTo: topAnchor),
@@ -153,19 +193,59 @@ private final class SettingsRootView: NSView {
         button.alignment = .center
         button.translatesAutoresizingMaskIntoConstraints = false
         button.widthAnchor.constraint(equalToConstant: 144).isActive = true
+        button.wantsLayer = true
+        applyButtonShadow(button)
+    }
+
+    private func applyButtonShadow(_ button: NSButton) {
+        let isDark = button.effectiveAppearance
+            .bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+
+        if isDark {
+            // [EN] In dark mode a black shadow vanishes against the dark sidebar.
+            //      Use a faint white ambient glow (radius 3, no offset) to suggest
+            //      elevation through brightness contrast instead of darkness.
+            // [CN] 暗黑模式下黑色阴影会和深色侧边栏融为一体。
+            //      改用极淡的白色环境光晕（radius 3，无偏移），以亮度差代替深度差来体现浮起感。
+            // [JP] ダークモードでは黒いシャドウが暗いサイドバーに溶け込む。
+            //      代わりに非常に薄い白のアンビエントグロー（radius 3・オフセットなし）で
+            //      輝度差による浮き上がり感を表現する。
+            button.layer?.shadowColor   = NSColor(white: 1.0, alpha: 0.10).cgColor
+            button.layer?.shadowOpacity = 1
+            button.layer?.shadowRadius  = 3
+            button.layer?.shadowOffset  = NSSize(width: 0, height: 0)
+        } else {
+            // [EN] In light mode a standard downward dark drop shadow gives depth.
+            // [CN] 明亮模式下使用标准向下的深色投影来表现深度。
+            // [JP] ライトモードでは標準の下向き暗いドロップシャドウで奥行きを出す。
+            button.layer?.shadowColor   = NSColor(white: 0.0, alpha: 0.14).cgColor
+            button.layer?.shadowOpacity = 1
+            button.layer?.shadowRadius  = 3
+            button.layer?.shadowOffset  = NSSize(width: 0, height: -1)
+        }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyButtonShadow(settingsButton)
+        applyButtonShadow(aboutButton)
     }
 
     @objc
     private func showSettings() {
         settingsButton.state = .on
-        aboutButton.state = .off
+        aboutButton.state    = .off
+        settingsSelectionPill.isHidden = false
+        aboutSelectionPill.isHidden    = true
         setDetailView(settingsPane)
     }
 
     @objc
     private func showAbout() {
         settingsButton.state = .off
-        aboutButton.state = .on
+        aboutButton.state    = .on
+        settingsSelectionPill.isHidden = true
+        aboutSelectionPill.isHidden    = false
         setDetailView(aboutPane)
     }
 
@@ -557,6 +637,84 @@ private final class AboutPaneView: NSView {
     }
 }
 
+// MARK: - Selection Pill
+
+// ═══════════════════════════════════════════════════════════════
+//  SelectionPillView — sidebar active-tab highlight background
+// ═══════════════════════════════════════════════════════════════
+//
+//  [EN] A rounded-rect layer-backed view rendered behind each sidebar
+//       button. Visible only for the currently selected tab; hidden
+//       for all others. Uses controlAccentColor at low opacity so
+//       the tint follows the user's chosen accent color and works
+//       in both light and dark mode.
+//       CGColor (layer.backgroundColor) is a static snapshot, so
+//       viewDidChangeEffectiveAppearance() re-snapshots it every time
+//       the system appearance or accent color changes.
+//
+//  [CN] 一个圆角矩形的 layer 视图，渲染在每个侧边栏按钮的背后。
+//       只对当前选中的 Tab 可见；其余隐藏。使用低透明度的
+//       controlAccentColor，跟随用户的强调色，明暗模式均适用。
+//       layer.backgroundColor 是 CGColor（静态快照），因此在
+//       viewDidChangeEffectiveAppearance() 里每次重新快照。
+//
+//  [JP] 各サイドバーボタンの背面に描画される角丸レイヤービュー。
+//       現在選択中のタブにのみ表示し、その他は非表示にする。
+//       controlAccentColor を低い不透明度で使用するため、
+//       ユーザーのアクセントカラーに追従し明暗両モードで機能する。
+//       layer.backgroundColor は CGColor（静的スナップショット）の
+//       ため、viewDidChangeEffectiveAppearance() で毎回再取得する。
+// ═══════════════════════════════════════════════════════════════
+
+private final class SelectionPillView: NSView {
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        isHidden = true
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        refreshLayerColor()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        layer?.cornerRadius = 6
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshLayerColor()
+    }
+
+    // [EN] Return nil so all mouse events fall through to the button underneath.
+    //      NSView.hitTest returning nil = "this view is invisible to the mouse".
+    // [CN] 返回 nil 让所有鼠标事件穿透到下方的按钮。
+    //      NSView.hitTest 返回 nil 表示该视图对鼠标不可见。
+    // [JP] nil を返してすべてのマウスイベントを下のボタンに通過させる。
+    //      NSView.hitTest が nil を返す = マウスに対して不可視。
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    private func refreshLayerColor() {
+        let isDark = effectiveAppearance
+            .bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+
+        if isDark {
+            // [EN] Dark mode: overlay a translucent white to make the selected button
+            //      lighter/brighter than the unselected siblings.
+            // [CN] 暗黑模式：叠加半透明白色，使选中按钮比未选中的更亮/更浅。
+            // [JP] ダークモード：半透明の白を重ね、選択中ボタンを未選択より明るく見せる。
+            layer?.backgroundColor = NSColor(white: 1.0, alpha: 0.11).cgColor
+        } else {
+            // [EN] Light mode: overlay a translucent black to make the selected button
+            //      darker/deeper than the unselected siblings.
+            // [CN] 明亮模式：叠加半透明黑色，使选中按钮比未选中的更深/更暗。
+            // [JP] ライトモード：半透明の黒を重ね、選択中ボタンを未選択より暗く見せる。
+            layer?.backgroundColor = NSColor(white: 0.0, alpha: 0.09).cgColor
+        }
+    }
+}
+
 // MARK: - Validation Popover
 
 // ═══════════════════════════════════════════════════════════════
@@ -676,15 +834,31 @@ private final class PositionMatrixControl: NSControl {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.shadowColor = NSColor.shadowColor.withAlphaComponent(0.22).cgColor
-        layer?.shadowOpacity = 1
-        layer?.shadowRadius = 8
-        layer?.shadowOffset = NSSize(width: 0, height: -2)
+        applyShadow()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         wantsLayer = true
+    }
+
+    // [EN] Re-snapshot the shadow CGColor whenever the system appearance flips.
+    //      layer.shadowColor is a CGColor (static snapshot), so it must be
+    //      refreshed explicitly on each appearance change to stay correct.
+    // [CN] 系统外观切换时重新快照 shadow CGColor。
+    //      layer.shadowColor 是静态 CGColor，每次 appearance 变化都需显式刷新。
+    // [JP] システムの appearance が切り替わるたびに shadow の CGColor を再取得する。
+    //      layer.shadowColor は静的な CGColor のため、明示的に更新が必要。
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyShadow()
+    }
+
+    private func applyShadow() {
+        layer?.shadowColor   = NSColor.shadowColor.withAlphaComponent(0.22).cgColor
+        layer?.shadowOpacity = 1
+        layer?.shadowRadius  = 8
+        layer?.shadowOffset  = NSSize(width: 0, height: -2)
     }
 
     override func draw(_ dirtyRect: NSRect) {
