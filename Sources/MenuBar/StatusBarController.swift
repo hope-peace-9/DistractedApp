@@ -17,10 +17,14 @@ import Cocoa
 final class StatusBarController: NSObject {
 
     private static let menubarIconPointSize: CGFloat = 18
-    /// [EN] Gap between status-item bottom edge and menu top (pt).
-    /// [CN] 状态项底边与菜单顶边之间的间距（pt）。
-    /// [JP] ステータス項目下端とメニュー上端の間隔（pt）。
-    private static let menuPopUpGapBelowButton: CGFloat = 10
+    /// [EN] Logical gap (pt) between status-item bottom and menu top — scales on 1x/2x.
+    /// [CN] 状态项底边与菜单顶边之间的逻辑间距（pt），在 1x/2x 屏上自适应。
+    /// [JP] ステータス項目下端とメニュー上端の論理間隔（pt）。1x/2x でスケール。
+    private static let menuPopUpScreenGap: CGFloat = 10
+    /// [EN] Matches `makeToggleItem` row width for multi-monitor X clamping.
+    /// [CN] 与 `makeToggleItem` 行宽一致，用于多显示器 X 轴边界钳制。
+    /// [JP] `makeToggleItem` の行幅と一致。マルチディスプレイの X クランプ用。
+    private static let estimatedMenuWidth: CGFloat = 220
 
     // MARK: - Properties
 
@@ -181,21 +185,38 @@ final class StatusBarController: NSObject {
         }
     }
 
-    /// [EN] Anchor point just below the status-item button so the menu clears the
-    ///      system menu bar. `y = bounds.height` was wrong — that is the edge toward
-    ///      the menu bar and makes the menu overlap it.
-    /// [CN] 锚点放在状态栏按钮底边稍下方，避免菜单遮挡系统菜单栏。
-    ///      此前 `y = bounds.height` 靠近菜单栏一侧，会导致重叠。
-    /// [JP] ステータス項目ボタンの下端より少し下にアンカーを置き、
-    ///      システムメニューバーと重ならないようにする。
+    /// [EN] Responsive anchor for `NSMenu.popUp`: convert the status button into
+    ///      screen space, place the anchor just below its bottom edge, then map back
+    ///      into button coordinates. Works across resolutions, scale factors, and
+    ///      notch / multi-monitor layouts without hard-coded view Y hacks.
+    /// [CN] `NSMenu.popUp` 的响应式锚点：把状态栏按钮转换到屏幕坐标，在底边下方
+    ///      放置锚点再映射回按钮坐标系，适配不同分辨率、缩放、刘海与多显示器。
+    /// [JP] `NSMenu.popUp` 用のレスポンシブアンカー。ステータスボタンを
+    ///      スクリーン座標へ変換し、下端の少し下に置いてからボタン座標へ戻す。
     private func menuPopUpAnchor(in button: NSStatusBarButton) -> NSPoint {
-        let gap = Self.menuPopUpGapBelowButton
-        if button.isFlipped {
-            // Origin top-left: bottom edge of item (desktop side) is at maxY.
-            return NSPoint(x: 0, y: button.bounds.height + gap)
+        guard let window = button.window else {
+            return NSPoint(x: 0, y: 0)
         }
-        // Origin bottom-left: bottom edge of item is at y = 0; anchor below it.
-        return NSPoint(x: 0, y: -gap)
+
+        let buttonInWindow = button.convert(button.bounds, to: nil)
+        let buttonOnScreen = window.convertToScreen(buttonInWindow)
+
+        var screenAnchor = NSPoint(
+            x: buttonOnScreen.minX,
+            y: buttonOnScreen.minY - Self.menuPopUpScreenGap
+        )
+
+        if let screen = window.screen {
+            let visible = screen.visibleFrame
+            let maxX = screenAnchor.x + Self.estimatedMenuWidth
+            if maxX > visible.maxX {
+                screenAnchor.x = max(visible.minX, visible.maxX - Self.estimatedMenuWidth)
+            }
+            screenAnchor.x = max(screenAnchor.x, visible.minX)
+        }
+
+        let anchorInWindow = window.convertPoint(fromScreen: screenAnchor)
+        return button.convert(anchorInWindow, from: nil)
     }
 
     @objc
