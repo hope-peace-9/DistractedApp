@@ -17,6 +17,10 @@ import Cocoa
 final class StatusBarController: NSObject {
 
     private static let menubarIconPointSize: CGFloat = 18
+    /// [EN] Gap between status-item bottom edge and menu top (pt).
+    /// [CN] 状态项底边与菜单顶边之间的间距（pt）。
+    /// [JP] ステータス項目下端とメニュー上端の間隔（pt）。
+    private static let menuPopUpGapBelowButton: CGFloat = 10
 
     // MARK: - Properties
 
@@ -172,12 +176,26 @@ final class StatusBarController: NSObject {
         // [JP] 1 runloop 遅延して popUp し、activate 完了後にメニュートラッキングを開始する。
         DispatchQueue.main.async { [weak self] in
             guard let self, let button = self.statusItem?.button, let menu = self.menu else { return }
-            // [EN] Native anchor: bottom-left of button bounds — AppKit places the menu
-            //      directly under the status-item without manual screen-coordinate math.
-            // [CN] 原生锚点：按钮 bounds 左下角，由 AppKit 在状态项正下方弹出菜单。
-            // [JP] ネイティブアンカー：ボタン bounds の左下。AppKit がステータス項目の直下に配置。
-            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
+            let anchor = self.menuPopUpAnchor(in: button)
+            menu.popUp(positioning: nil, at: anchor, in: button)
         }
+    }
+
+    /// [EN] Anchor point just below the status-item button so the menu clears the
+    ///      system menu bar. `y = bounds.height` was wrong — that is the edge toward
+    ///      the menu bar and makes the menu overlap it.
+    /// [CN] 锚点放在状态栏按钮底边稍下方，避免菜单遮挡系统菜单栏。
+    ///      此前 `y = bounds.height` 靠近菜单栏一侧，会导致重叠。
+    /// [JP] ステータス項目ボタンの下端より少し下にアンカーを置き、
+    ///      システムメニューバーと重ならないようにする。
+    private func menuPopUpAnchor(in button: NSStatusBarButton) -> NSPoint {
+        let gap = Self.menuPopUpGapBelowButton
+        if button.isFlipped {
+            // Origin top-left: bottom edge of item (desktop side) is at maxY.
+            return NSPoint(x: 0, y: button.bounds.height + gap)
+        }
+        // Origin bottom-left: bottom edge of item is at y = 0; anchor below it.
+        return NSPoint(x: 0, y: -gap)
     }
 
     @objc
