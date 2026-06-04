@@ -16,6 +16,8 @@ import Cocoa
 
 final class StatusBarController: NSObject {
 
+    private static let menubarIconPointSize: CGFloat = 18
+
     // MARK: - Properties
 
     private var statusItem: NSStatusItem?
@@ -52,10 +54,7 @@ final class StatusBarController: NSObject {
 
     private func configureButton() {
         guard let button = statusItem?.button else { return }
-        let image = NSImage(systemSymbolName: "clock.badge.questionmark",
-                            accessibilityDescription: L10n.appName)
-        image?.isTemplate = true
-        button.image = image
+        button.image = loadMenubarIcon()
         // [EN] Do NOT rely on `statusItem.menu` auto-popup while inactive.
         //      Assigning `statusItem.menu` makes AppKit open the menu before
         //      activation finishes, which dismisses it on the first click.
@@ -69,6 +68,33 @@ final class StatusBarController: NSObject {
         button.target = self
         button.action = #selector(statusBarButtonClicked(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+    }
+
+    /// [EN] Rasterise the bundled menubar asset into a single 18×18 pt template image.
+    ///      Setting `.size` alone is not enough — huge @2x bitmaps still draw as a
+    ///      clipped black block unless we bake one representation at the target size.
+    /// [CN] 将 bundle 中的 menubar 资源光栅化为单个 18×18 pt 模板图。
+    ///      仅设置 `.size` 不够 —— 大尺寸 @2x 位图仍会显示为被裁切的黑块。
+    /// [JP] バンドル内 menubar を 18×18 pt の単一テンプレート画像にラスタライズする。
+    ///      `.size` だけでは不十分で、巨大な @2x ビットマップは黒い塊になる。
+    private func loadMenubarIcon() -> NSImage? {
+        guard let source = NSImage(named: "menubar") else { return nil }
+
+        let side = Self.menubarIconPointSize
+        let target = NSSize(width: side, height: side)
+        let icon = NSImage(size: target)
+        icon.isTemplate = true
+
+        icon.lockFocus()
+        if let ctx = NSGraphicsContext.current {
+            ctx.imageInterpolation = .high
+        }
+        let from = NSRect(origin: .zero, size: source.size)
+        let to = NSRect(origin: .zero, size: target)
+        source.draw(in: to, from: from, operation: .sourceOver, fraction: 1.0)
+        icon.unlockFocus()
+
+        return icon
     }
 
     // MARK: - Menu
@@ -146,8 +172,11 @@ final class StatusBarController: NSObject {
         // [JP] 1 runloop 遅延して popUp し、activate 完了後にメニュートラッキングを開始する。
         DispatchQueue.main.async { [weak self] in
             guard let self, let button = self.statusItem?.button, let menu = self.menu else { return }
-            let location = NSPoint(x: 0, y: button.bounds.height)
-            menu.popUp(positioning: nil, at: location, in: button)
+            // [EN] Native anchor: bottom-left of button bounds — AppKit places the menu
+            //      directly under the status-item without manual screen-coordinate math.
+            // [CN] 原生锚点：按钮 bounds 左下角，由 AppKit 在状态项正下方弹出菜单。
+            // [JP] ネイティブアンカー：ボタン bounds の左下。AppKit がステータス項目の直下に配置。
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
         }
     }
 

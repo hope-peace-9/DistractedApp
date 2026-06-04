@@ -137,6 +137,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private static func bundleAppIconImage() -> NSImage {
+        if let named = NSImage(named: "AppIcon") {
+            return named
+        }
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let fromBundle = NSImage(contentsOf: url) {
+            return fromBundle
+        }
+        return NSApp.applicationIconImage ?? NSImage()
+    }
+
     private func buildStartupWindow() -> (NSWindow, NSButton, StartupModalHandler) {
         let handler      = StartupModalHandler()
         let windowWidth  : CGFloat = 300
@@ -162,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // 1. Icon
-        let iconView = NSImageView(image: NSApp.applicationIconImage)
+        let iconView = NSImageView(image: Self.bundleAppIconImage())
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
 

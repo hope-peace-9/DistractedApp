@@ -4,6 +4,10 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/AppIcon.icns</key>
+		<data>
+		/rTqxYeeT8WTwvQ+ZlfQhcKua1o=
+		</data>
 		<key>Resources/en.lproj/Localizable.strings</key>
 		<dict>
 			<key>hash</key>
@@ -22,6 +26,14 @@
 			<key>optional</key>
 			<true/>
 		</dict>
+		<key>Resources/menubar.png</key>
+		<data>
+		ooPCZJbnCipjO9Xydkwl3XkdWL8=
+		</data>
+		<key>Resources/menubar@2x.png</key>
+		<data>
+		iun/ahnkvLvfsWMnKd+C1Thz2V4=
+		</data>
 		<key>Resources/zh-Hans.lproj/Localizable.strings</key>
 		<dict>
 			<key>hash</key>
@@ -43,6 +55,13 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/AppIcon.icns</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			gfxaePt+KOAXnRMFSra5wxRdg67+q2lnEnlmEb0QBrk=
+			</data>
+		</dict>
 		<key>Resources/en.lproj/Localizable.strings</key>
 		<dict>
 			<key>hash2</key>
@@ -60,6 +79,20 @@
 			</data>
 			<key>optional</key>
 			<true/>
+		</dict>
+		<key>Resources/menubar.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			FZpTHvkc+A6oqYbp0c2z4mufbiS62Q/gr/uuKZQrZ30=
+			</data>
+		</dict>
+		<key>Resources/menubar@2x.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			XkWaA5ornrmihau09gwyjc4nUX/iI72cGcUbNRr6U0o=
+			</data>
 		</dict>
 		<key>Resources/zh-Hans.lproj/Localizable.strings</key>
 		<dict>
