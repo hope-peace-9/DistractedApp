@@ -117,6 +117,10 @@ enum L10n {
     static func alertCustomDurationMessage(max: Int) -> String {
         tr("alert.customDuration.message", max)
     }
+    static var alertStartupTitle: String { tr("alert.startup.title") }
+    static var alertStartupMessage: String { tr("alert.startup.message") }
+    static var alertStartupYes: String { tr("alert.startup.yes") }
+    static var alertStartupDontAskAgain: String { tr("alert.startup.dontAskAgain") }
 }
 
 extension String {

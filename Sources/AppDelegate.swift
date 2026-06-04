@@ -1,4 +1,5 @@
 import Cocoa
+import ServiceManagement
 
 // ═══════════════════════════════════════════════════════════════
 //  AppDelegate — application lifecycle & component wiring
@@ -51,6 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let storedDur = preferences.durationSeconds
         print("[Distracted] Loaded preferences — interval: \(intervalMinutes) min, position: \(storedPos), duration: \(storedDur)s")
 
+        promptForLaunchAtLoginIfNeeded(preferences: preferences)
+
         // 4. Start the absolute-timestamp-backed timer
         let intervalSeconds = preferences.intervalSeconds
         timerService = TimerService(interval: intervalSeconds) { [weak self] in
@@ -72,6 +75,172 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 7. Prime AppKit so menu-bar NSSwitch renders with accent color on first open
         primeAppKitActiveState()
+    }
+
+    // MARK: - Launch at Login Onboarding
+
+    // [EN] NSAlert has a fixed two-column layout (icon left, text right) that cannot
+    //      be overridden with accessoryView tricks. We replace it with a plain
+    //      NSWindow whose content view is a proper top-to-bottom Auto Layout stack:
+    //        1. App icon   — centered, 80 pt (64 × 1.25)
+    //        2. Title      — wrapping label, centered
+    //        3. Message    — wrapping label, secondary color, centered
+    //        4. Checkbox   — "Don't ask again", centered
+    //        5. Button row — Cancel | Yes, right-aligned per HIG
+    //
+    // [CN] NSAlert 有固定的左图标+右文字两栏结构，无法通过 accessoryView 覆盖。
+    //      改用普通 NSWindow，内容视图为纯自上而下的 Auto Layout 布局：
+    //        1. App 图标   — 居中，80pt (64 × 1.25)
+    //        2. 标题       — 换行标签，居中
+    //        3. 正文       — 换行标签，次要颜色，居中
+    //        4. 复选框     — "不再询问"，居中
+    //        5. 按钮行     — 取消 | 是的，按 HIG 靠右排列
+    //
+    // [JP] NSAlert は左アイコン・右テキストの2列固定レイアウトで、
+    //      accessoryView では上書きできない。通常の NSWindow に置き換え、
+    //      content view を純粋な縦方向 Auto Layout で構成する：
+    //        1. App アイコン  — 中央揃え、80pt (64 × 1.25)
+    //        2. タイトル      — 折り返しラベル、中央揃え
+    //        3. メッセージ    — 折り返しラベル、セカンダリカラー、中央揃え
+    //        4. チェックボックス — "今後表示しない"、中央揃え
+    //        5. ボタン行      — キャンセル | はい、HIG に従い右揃え
+    private func promptForLaunchAtLoginIfNeeded(preferences: PreferencesStore) {
+        guard !preferences.hasPromptedForStartup else { return }
+
+        let status = SMAppService.mainApp.status
+        guard status == .notFound || status == .notRegistered else { return }
+
+        NSApp.activate(ignoringOtherApps: true)
+
+        let (window, checkbox, handler) = buildStartupWindow()
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        let response = NSApp.runModal(for: window)
+        window.orderOut(nil)
+        _ = handler
+
+        if checkbox.state == .on {
+            preferences.hasPromptedForStartup = true
+        }
+
+        guard response == .OK else { return }
+
+        do {
+            try SMAppService.mainApp.register()
+            print("[Distracted] Launch at login registration requested")
+        } catch {
+            print("[Distracted] Failed to register launch at login: \(error)")
+        }
+
+        if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func buildStartupWindow() -> (NSWindow, NSButton, StartupModalHandler) {
+        let handler      = StartupModalHandler()
+        let windowWidth  : CGFloat = 300
+        let windowHeight : CGFloat = 288
+        let hPad         : CGFloat = 24
+        let iconSize     : CGFloat = 64 * 1.25
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight),
+            styleMask:   [.titled, .fullSizeContentView],
+            backing:     .buffered,
+            defer:       false)
+        window.isReleasedWhenClosed        = false
+        window.titlebarAppearsTransparent  = true
+        window.titleVisibility             = .hidden
+        window.isMovableByWindowBackground = true
+        window.standardWindowButton(.closeButton)?.isHidden     = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden      = true
+
+        guard let cv = window.contentView else {
+            return (window, NSButton(), handler)
+        }
+
+        // 1. Icon
+        let iconView = NSImageView(image: NSApp.applicationIconImage)
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        // 2. Title
+        let titleField = NSTextField(labelWithString: L10n.alertStartupTitle)
+        titleField.font                  = .systemFont(ofSize: 14, weight: .semibold)
+        titleField.alignment             = .center
+        titleField.lineBreakMode         = .byWordWrapping
+        titleField.maximumNumberOfLines  = 0
+        titleField.preferredMaxLayoutWidth = windowWidth - hPad * 2
+        titleField.translatesAutoresizingMaskIntoConstraints = false
+
+        // 3. Message
+        let msgField = NSTextField(labelWithString: L10n.alertStartupMessage)
+        msgField.font                  = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        msgField.textColor             = .secondaryLabelColor
+        msgField.alignment             = .center
+        msgField.lineBreakMode         = .byWordWrapping
+        msgField.maximumNumberOfLines  = 0
+        msgField.preferredMaxLayoutWidth = windowWidth - hPad * 2
+        msgField.translatesAutoresizingMaskIntoConstraints = false
+
+        // 4. Checkbox
+        let checkbox = NSButton(checkboxWithTitle: L10n.alertStartupDontAskAgain,
+                                target: nil, action: nil)
+        checkbox.state = .off
+        checkbox.translatesAutoresizingMaskIntoConstraints = false
+
+        // 5. Buttons (centered)
+        let cancelBtn = NSButton(title: L10n.alertCancel,
+                                 target: handler,
+                                 action: #selector(StartupModalHandler.cancel(_:)))
+        cancelBtn.bezelStyle    = .rounded
+        cancelBtn.keyEquivalent = "\u{1B}"
+        cancelBtn.translatesAutoresizingMaskIntoConstraints = false
+
+        let confirmBtn = NSButton(title: L10n.alertStartupYes,
+                                  target: handler,
+                                  action: #selector(StartupModalHandler.confirm(_:)))
+        confirmBtn.bezelStyle    = .rounded
+        confirmBtn.keyEquivalent = "\r"
+        confirmBtn.translatesAutoresizingMaskIntoConstraints = false
+
+        let buttonRow = NSStackView(views: [cancelBtn, confirmBtn])
+        buttonRow.orientation = .horizontal
+        buttonRow.spacing     = 8
+        buttonRow.translatesAutoresizingMaskIntoConstraints = false
+
+        [iconView, titleField, msgField, checkbox, buttonRow].forEach { cv.addSubview($0) }
+
+        NSLayoutConstraint.activate([
+            // 1. Icon — centered at top
+            iconView.widthAnchor.constraint(equalToConstant: iconSize),
+            iconView.heightAnchor.constraint(equalToConstant: iconSize),
+            iconView.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+            iconView.topAnchor.constraint(equalTo: cv.topAnchor, constant: 20),
+
+            // 2. Title below icon
+            titleField.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 10),
+            titleField.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: hPad),
+            titleField.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -hPad),
+
+            // 3. Message below title
+            msgField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 6),
+            msgField.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: hPad),
+            msgField.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -hPad),
+
+            // 4. Checkbox below message, centered
+            checkbox.topAnchor.constraint(equalTo: msgField.bottomAnchor, constant: 12),
+            checkbox.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+
+            // 5. Buttons below checkbox, centered
+            buttonRow.topAnchor.constraint(equalTo: checkbox.bottomAnchor, constant: 16),
+            buttonRow.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+            buttonRow.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16)
+        ])
+
+        return (window, checkbox, handler)
     }
 
     // MARK: - AppKit Active-State Priming
@@ -254,4 +423,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func storedDurationSeconds() -> Int {
         PreferencesStore.shared.durationSeconds
     }
+}
+
+// MARK: - Startup Modal Handler
+
+private final class StartupModalHandler: NSObject {
+    @objc func confirm(_ sender: Any?) { NSApp.stopModal(withCode: .OK) }
+    @objc func cancel(_ sender: Any?)  { NSApp.stopModal(withCode: .cancel) }
 }

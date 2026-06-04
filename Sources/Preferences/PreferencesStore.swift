@@ -134,6 +134,17 @@ final class PreferencesStore {
         }
     }
 
+    // MARK: - Startup Onboarding
+
+    var hasPromptedForStartup: Bool {
+        get {
+            defaults.bool(forKey: Constants.UserDefaultsKey.hasPromptedForStartup)
+        }
+        set {
+            defaults.set(newValue, forKey: Constants.UserDefaultsKey.hasPromptedForStartup)
+        }
+    }
+
     // MARK: - Schema
 
     private func ensureSchemaVersion() {

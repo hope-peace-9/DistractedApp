@@ -56,6 +56,19 @@ final class StatusBarController: NSObject {
                             accessibilityDescription: L10n.appName)
         image?.isTemplate = true
         button.image = image
+        // [EN] Do NOT rely on `statusItem.menu` auto-popup while inactive.
+        //      Assigning `statusItem.menu` makes AppKit open the menu before
+        //      activation finishes, which dismisses it on the first click.
+        //      We handle the click ourselves: activate first, then popUp.
+        // [CN] 不要在非 active 时依赖 `statusItem.menu` 的自动弹出。
+        //      挂上 `statusItem.menu` 会在 activate 完成前就弹菜单，导致首次点击闪退。
+        //      改由自定义点击：先 activate，再手动 popUp。
+        // [JP] 非アクティブ時に `statusItem.menu` の自動表示に頼らない。
+        //      menu を直接割り当てると activate 完了前に開き、初回クリックで消える。
+        //      クリックを自前処理し、先に activate してから popUp する。
+        button.target = self
+        button.action = #selector(statusBarButtonClicked(_:))
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
 
     // MARK: - Menu
@@ -78,7 +91,9 @@ final class StatusBarController: NSObject {
         quitItem.target = self
         m.addItem(quitItem)
 
-        statusItem?.menu = m
+        // [EN] Keep menu off statusItem — manual popUp after activation (see configureButton).
+        // [CN] 不把 menu 挂到 statusItem —— 在 activate 后手动 popUp（见 configureButton）。
+        // [JP] statusItem に menu を付けない — activate 後に手動 popUp（configureButton 参照）。
         menu = m
     }
 
@@ -119,6 +134,22 @@ final class StatusBarController: NSObject {
     }
 
     // MARK: - Actions
+
+    @objc
+    private func statusBarButtonClicked(_ sender: Any?) {
+        guard statusItem?.button != nil, menu != nil else { return }
+
+        NSApp.activate(ignoringOtherApps: true)
+
+        // [EN] Defer popUp one run-loop turn so activation completes before menu tracking.
+        // [CN] 推迟到下一 runloop 再 popUp，确保 activate 完成后再进入菜单追踪。
+        // [JP] 1 runloop 遅延して popUp し、activate 完了後にメニュートラッキングを開始する。
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let button = self.statusItem?.button, let menu = self.menu else { return }
+            let location = NSPoint(x: 0, y: button.bounds.height)
+            menu.popUp(positioning: nil, at: location, in: button)
+        }
+    }
 
     @objc
     private func toggleChanged(_ sender: NSSwitch) {

@@ -65,3 +65,7 @@
 "alert.customInterval.message" = "Enter minutes (1 - %d):";
 "alert.customDuration.title" = "Custom Duration";
 "alert.customDuration.message" = "Enter seconds (1 - %d):";
+"alert.startup.title" = "Run “Distracted?” automatically at login?";
+"alert.startup.message" = "After adding it, you can change this anytime in macOS System Settings > General > Login Items.";
+"alert.startup.yes" = "Yes";
+"alert.startup.dontAskAgain" = "Don’t ask again";

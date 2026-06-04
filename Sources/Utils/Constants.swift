@@ -93,6 +93,8 @@ enum Constants {
         static let backgroundOpacity = "backgroundOpacity"
         /// [EN] Preferences schema version for future migrations.
         static let schemaVersion = "schemaVersion"
+        /// [EN] Whether the launch-at-login onboarding prompt should be suppressed.
+        static let hasPromptedForStartup = "hasPromptedForStartup"
     }
 
     // ── Position options ───────────────────────────────────────

@@ -6,7 +6,7 @@ APP_NAME     := Distracted
 BUNDLE_ID    := com.distracted.app
 BUILD_DIR    := build
 APP_BUNDLE   := $(BUILD_DIR)/$(APP_NAME).app
-SWIFT_FLAGS  := -target arm64-apple-macos14.0 -framework AppKit -O -whole-module-optimization
+SWIFT_FLAGS  := -target arm64-apple-macos14.0 -framework AppKit -framework ServiceManagement -O -whole-module-optimization
 
 SOURCES := \
 	Sources/main.swift \

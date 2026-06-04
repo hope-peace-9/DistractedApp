@@ -65,3 +65,7 @@
 "alert.customInterval.message" = "請輸入分鐘數 (1 - %d)：";
 "alert.customDuration.title" = "自訂停留時間";
 "alert.customDuration.message" = "請輸入秒數 (1 - %d)：";
+"alert.startup.title" = "需要開機時自動執行「分心了麼?」嗎？";
+"alert.startup.message" = "加入後，你可以在 macOS 的「系統設定 > 一般 > 登入項目」中隨時更改此設定。";
+"alert.startup.yes" = "是的";
+"alert.startup.dontAskAgain" = "不再詢問";
