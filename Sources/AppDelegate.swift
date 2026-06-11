@@ -39,13 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("[Distracted] App launched — PID: \(ProcessInfo.processInfo.processIdentifier)")
 
-        // 1. Accessibility permission self-check (informational only)
         checkAccessibilityPermission()
 
-        // 2. Build the floating overlay window (hidden until first flash)
         overlayWindow = TimeOverlayWindow()
 
-        // 3. Read persisted preferences
         let preferences = PreferencesStore.shared
         let intervalMinutes = preferences.intervalMinutes
         let storedPos = preferences.overlayPositionRawValue
@@ -54,13 +51,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         promptForLaunchAtLoginIfNeeded(preferences: preferences)
 
-        // 4. Start the absolute-timestamp-backed timer
         let intervalSeconds = preferences.intervalSeconds
         timerService = TimerService(interval: intervalSeconds) { [weak self] in
             self?.showTimeOverlay()
         }
 
-        // 5. Status bar icon — user's only exit (LSUIElement = YES)
         statusBarController = StatusBarController()
 
         if let timerService, let overlayWindow, let statusBarController {
@@ -70,10 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                                       statusBarController: statusBarController)
         }
 
-        // 6. Listen for sleep/wake to recalibrate timer
         registerForPowerNotifications()
 
-        // 7. Prime AppKit so menu-bar NSSwitch renders with accent color on first open
         primeAppKitActiveState()
     }
 
@@ -112,14 +105,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.activate(ignoringOtherApps: true)
 
-        let (window, checkbox, handler) = buildStartupWindow()
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        let response = NSApp.runModal(for: window)
-        window.orderOut(nil)
-        _ = handler
+        let startupPrompt = buildStartupWindow()
+        startupPrompt.window.center()
+        startupPrompt.window.makeKeyAndOrderFront(nil)
+        let response = NSApp.runModal(for: startupPrompt.window)
+        startupPrompt.window.orderOut(nil)
 
-        if checkbox.state == .on {
+        if startupPrompt.checkbox.state == .on {
             preferences.hasPromptedForStartup = true
         }
 
@@ -148,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return NSApp.applicationIconImage ?? NSImage()
     }
 
-    private func buildStartupWindow() -> (NSWindow, NSButton, StartupModalHandler) {
+    private func buildStartupWindow() -> (window: NSWindow, checkbox: NSButton, handler: StartupModalHandler) {
         let handler      = StartupModalHandler()
         let windowWidth  : CGFloat = 300
         let windowHeight : CGFloat = 288
@@ -172,12 +164,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return (window, NSButton(), handler)
         }
 
-        // 1. Icon
         let iconView = NSImageView(image: Self.bundleAppIconImage())
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
-        // 2. Title
         let titleField = NSTextField(labelWithString: L10n.alertStartupTitle)
         titleField.font                  = .systemFont(ofSize: 14, weight: .semibold)
         titleField.alignment             = .center
@@ -186,7 +176,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         titleField.preferredMaxLayoutWidth = windowWidth - hPad * 2
         titleField.translatesAutoresizingMaskIntoConstraints = false
 
-        // 3. Message
         let msgField = NSTextField(labelWithString: L10n.alertStartupMessage)
         msgField.font                  = .systemFont(ofSize: NSFont.smallSystemFontSize)
         msgField.textColor             = .secondaryLabelColor
@@ -196,13 +185,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         msgField.preferredMaxLayoutWidth = windowWidth - hPad * 2
         msgField.translatesAutoresizingMaskIntoConstraints = false
 
-        // 4. Checkbox
         let checkbox = NSButton(checkboxWithTitle: L10n.alertStartupDontAskAgain,
                                 target: nil, action: nil)
         checkbox.state = .off
         checkbox.translatesAutoresizingMaskIntoConstraints = false
 
-        // 5. Buttons (centered)
         let cancelBtn = NSButton(title: L10n.alertCancel,
                                  target: handler,
                                  action: #selector(StartupModalHandler.cancel(_:)))
@@ -225,27 +212,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         [iconView, titleField, msgField, checkbox, buttonRow].forEach { cv.addSubview($0) }
 
         NSLayoutConstraint.activate([
-            // 1. Icon — centered at top
             iconView.widthAnchor.constraint(equalToConstant: iconSize),
             iconView.heightAnchor.constraint(equalToConstant: iconSize),
             iconView.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
             iconView.topAnchor.constraint(equalTo: cv.topAnchor, constant: 20),
 
-            // 2. Title below icon
             titleField.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 10),
             titleField.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: hPad),
             titleField.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -hPad),
 
-            // 3. Message below title
             msgField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 6),
             msgField.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: hPad),
             msgField.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -hPad),
 
-            // 4. Checkbox below message, centered
             checkbox.topAnchor.constraint(equalTo: msgField.bottomAnchor, constant: 12),
             checkbox.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
 
-            // 5. Buttons below checkbox, centered
             buttonRow.topAnchor.constraint(equalTo: checkbox.bottomAnchor, constant: 16),
             buttonRow.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
             buttonRow.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16)
@@ -410,29 +392,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///      位置と持続時間を自ら読み取る。
     private func showTimeOverlay() {
         overlayWindow?.showAndFadeOut()
-    }
-
-    // MARK: - UserDefaults helpers
-
-    /// [EN] Read persisted interval (minutes). Falls back to 30 if unset / invalid.
-    /// [CN] 读取持久化的间隔（分钟）。未设置或无效时默认 30。
-    /// [JP] 保存された間隔（分）を読み込む。未設定や無効値の場合はデフォルト30。
-    private func storedIntervalMinutes() -> Int {
-        PreferencesStore.shared.intervalMinutes
-    }
-
-    /// [EN] Read persisted position. Falls back to "Center".
-    /// [CN] 读取持久化的位置偏好。默认 "Center"。
-    /// [JP] 保存された位置設定を読み込む。デフォルトは "Center"。
-    private func storedPosition() -> String {
-        PreferencesStore.shared.overlayPositionRawValue
-    }
-
-    /// [EN] Read persisted duration (seconds). Falls back to 2.
-    /// [CN] 读取持久化的停留时间（秒）。默认 2。
-    /// [JP] 保存された持続時間（秒）を読み込む。デフォルトは2。
-    private func storedDurationSeconds() -> Int {
-        PreferencesStore.shared.durationSeconds
     }
 }
 

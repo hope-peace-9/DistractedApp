@@ -19,12 +19,6 @@ enum Constants {
     static let intervalMinMinutes: Int = 1
     static let intervalMaxMinutes: Int = 999
 
-    // ── Overlay display ────────────────────────────────────────
-    /// [EN] How long the time stays fully visible before fade-out.
-    /// [CN] 时间文字保持完全可见的时间（秒），之后开始淡出。
-    /// [JP] 完全表示の持続時間（秒）。その後フェードアウト開始。
-    static let flashDuration: TimeInterval = 2.0
-
     /// [EN] Duration of the fade-in animation at the start of a flash.
     /// [CN] 淡入动画持续时间。
     /// [JP] フェードインの所要時間。
@@ -49,16 +43,6 @@ enum Constants {
     /// [JP] 隅・端に配置するときの画面端からの余白。
     static let positionInset: CGFloat = 40
 
-    /// [EN] Offset from top edge when position = "Top" (redundant with positionInset now, kept for backward compat).
-    /// [CN] 当 position = "Top" 时距离屏幕顶部的偏移（现与 positionInset 冗余，保留向后兼容）。
-    /// [JP] position = "Top" のときの画面上端からのオフセット（現在はpositionInsetと重複、後方互換用）。
-    static let topPositionOffset: CGFloat = 80
-
-    // ── Duration presets ───────────────────────────────────────
-    /// [EN] Preset duration values (seconds) shown in the Duration submenu.
-    /// [CN] 停留时间子菜单中显示的预设值（秒）。
-    /// [JP] 持続時間サブメニューに表示するプリセット値（秒）。
-    static let durationPresets: [Int] = [2, 5]
     static let defaultDurationSeconds: Int = 2
     static let durationMin: Int = 1
     static let durationMax: Int = 10
@@ -67,12 +51,6 @@ enum Constants {
     static let defaultBackgroundOpacity: Double = 0.5
     static let backgroundOpacityMin: Double = 0.0
     static let backgroundOpacityMax: Double = 1.0
-
-    // ── Interval presets ───────────────────────────────────────
-    /// [EN] Preset interval values (minutes) shown in the Interval submenu.
-    /// [CN] 间隔子菜单中显示的预设值（分钟）。
-    /// [JP] 間隔サブメニューに表示するプリセット値（分）。
-    static let intervalPresets: [Int] = [15, 30, 60, 120]
 
     // ── UserDefaults keys ──────────────────────────────────────
     /// [EN] Keys used to persist user preferences in NSUserDefaults.
@@ -97,11 +75,8 @@ enum Constants {
         static let hasPromptedForStartup = "hasPromptedForStartup"
     }
 
-    // ── Position options ───────────────────────────────────────
-    /// [EN] Available screen-position presets shown in the menu.
-    /// [CN] 菜单位置预设的可选值。
-    /// [JP] メニューで選択可能な画面位置のプリセット。
-    enum Position: String, CaseIterable {
+    // ── Legacy migration options ───────────────────────────────
+    enum LegacyPosition: String, CaseIterable {
         case topLeft     = "Top-Left"
         case top         = "Top"
         case topRight    = "Top-Right"

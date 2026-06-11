@@ -6,14 +6,6 @@
 "menu.toggle" = "開關";
 "menu.settings" = "設定...";
 "menu.quit" = "結束";
-"menu.about" = "分心了麼？";
-
-/* Legacy menu labels */
-"menu.position" = "位置";
-"menu.interval" = "間隔";
-"menu.duration" = "停留時間";
-"menu.duration.full" = "停留時間";
-"menu.custom" = "自訂...";
 
 /* About */
 "about.title" = "分心了麼？";
@@ -58,13 +50,7 @@
 "position.bottomRight" = "右下";
 
 /* Alerts */
-"alert.ok" = "確定";
 "alert.cancel" = "取消";
-"alert.invalidInput.title" = "輸入無效";
-"alert.customInterval.title" = "自訂間隔";
-"alert.customInterval.message" = "請輸入分鐘數 (1 - %d)：";
-"alert.customDuration.title" = "自訂停留時間";
-"alert.customDuration.message" = "請輸入秒數 (1 - %d)：";
 "alert.startup.title" = "需要開機時自動執行「分心了麼?」嗎？";
 "alert.startup.message" = "加入後，你可以在 macOS 的「系統設定 > 一般 > 登入項目」中隨時更改此設定。";
 "alert.startup.yes" = "是的";

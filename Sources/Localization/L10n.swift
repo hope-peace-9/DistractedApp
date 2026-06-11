@@ -37,12 +37,6 @@ enum L10n {
     static var menuToggle: String { tr("menu.toggle") }
     static var menuSettings: String { tr("menu.settings") }
     static var menuQuit: String { tr("menu.quit") }
-    static var menuAbout: String { tr("menu.about") }
-    static var menuPosition: String { tr("menu.position") }
-    static var menuInterval: String { tr("menu.interval") }
-    static var menuDuration: String { tr("menu.duration") }
-    static var menuDurationFull: String { tr("menu.duration.full") }
-    static var menuCustom: String { tr("menu.custom") }
 
     // MARK: - About
 
@@ -106,17 +100,7 @@ enum L10n {
 
     // MARK: - Alerts
 
-    static var alertOK: String { tr("alert.ok") }
     static var alertCancel: String { tr("alert.cancel") }
-    static var alertInvalidInputTitle: String { tr("alert.invalidInput.title") }
-    static var alertCustomIntervalTitle: String { tr("alert.customInterval.title") }
-    static func alertCustomIntervalMessage(max: Int) -> String {
-        tr("alert.customInterval.message", max)
-    }
-    static var alertCustomDurationTitle: String { tr("alert.customDuration.title") }
-    static func alertCustomDurationMessage(max: Int) -> String {
-        tr("alert.customDuration.message", max)
-    }
     static var alertStartupTitle: String { tr("alert.startup.title") }
     static var alertStartupMessage: String { tr("alert.startup.message") }
     static var alertStartupYes: String { tr("alert.startup.yes") }

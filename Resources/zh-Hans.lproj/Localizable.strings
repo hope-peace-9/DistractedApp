@@ -6,14 +6,6 @@
 "menu.toggle" = "开关";
 "menu.settings" = "设置...";
 "menu.quit" = "退出";
-"menu.about" = "分心了么？";
-
-/* Legacy menu labels */
-"menu.position" = "位置";
-"menu.interval" = "间隔";
-"menu.duration" = "停留时间";
-"menu.duration.full" = "停留时间";
-"menu.custom" = "自定义...";
 
 /* About */
 "about.title" = "分心了么？";
@@ -58,13 +50,7 @@
 "position.bottomRight" = "右下";
 
 /* Alerts */
-"alert.ok" = "确定";
 "alert.cancel" = "取消";
-"alert.invalidInput.title" = "输入无效";
-"alert.customInterval.title" = "自定义间隔";
-"alert.customInterval.message" = "请输入分钟数 (1 - %d)：";
-"alert.customDuration.title" = "自定义停留时间";
-"alert.customDuration.message" = "请输入秒数 (1 - %d)：";
 "alert.startup.title" = "需要开机时自动运行「分心了么?」吗？";
 "alert.startup.message" = "加入后，你可以在 macOS 的“系统设置 > 通用 > 登录项”中随时更改此设置。";
 "alert.startup.yes" = "是的";

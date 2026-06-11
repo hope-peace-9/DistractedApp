@@ -171,15 +171,15 @@ final class PreferencesStore {
         // [CN] 迁移桥接：兼容旧版本或手写的历史值。
         // [JP] 旧版または手入力の値を移行するためのブリッジ。
         switch raw {
-        case Constants.Position.topLeft.rawValue:
+        case Constants.LegacyPosition.topLeft.rawValue:
             return .topLeft
-        case Constants.Position.top.rawValue:
+        case Constants.LegacyPosition.top.rawValue:
             return .topCenter
-        case Constants.Position.topRight.rawValue:
+        case Constants.LegacyPosition.topRight.rawValue:
             return .topRight
-        case Constants.Position.bottomLeft.rawValue:
+        case Constants.LegacyPosition.bottomLeft.rawValue:
             return .bottomLeft
-        case Constants.Position.bottomRight.rawValue:
+        case Constants.LegacyPosition.bottomRight.rawValue:
             return .bottomRight
         default:
             return .center

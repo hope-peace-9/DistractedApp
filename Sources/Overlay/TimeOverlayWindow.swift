@@ -81,7 +81,7 @@ final class TimeOverlayWindow: NSWindow {
     ///      6つのプリセットに対応：左上、上、右上、中央、左下、右下。
     ///      マウスカーソルがある画面を優先、なければメイン画面。
     ///
-    /// - Parameter position: One of the six Constants.Position raw values.
+    /// - Parameter position: One of the Constants.OverlayPosition raw values.
     func positionOnActiveScreen(position: String = Constants.OverlayPosition.center.rawValue) {
         let normalized = Constants.OverlayPosition(rawValue: position) ?? .center
         positionOnActiveScreen(position: normalized,
@@ -101,9 +101,6 @@ final class TimeOverlayWindow: NSWindow {
         let h = Constants.overlayHeight * scale
         let inset = Constants.positionInset
 
-        // [EN] Calculate origin based on position preset.
-        // [CN] 根据位置预设计算起点坐标。
-        // [JP] 位置プリセットに基づき原点を計算。
         let originX: CGFloat
         let originY: CGFloat
 
@@ -174,9 +171,6 @@ final class TimeOverlayWindow: NSWindow {
     ///      不透明度 1→0、最後に非表示。
     ///      再入防止ガードによりアニメーションの重複を防止。
     func showAndFadeOut() {
-        // [EN] Re-entrancy guard: if already animating, ignore this call.
-        // [CN] 防重入：如果动画正在进行，忽略本次调用。
-        // [JP] 再入防止：アニメーション中はこの呼び出しを無視。
         guard !isAnimating else {
             print("[Distracted] showAndFadeOut skipped — animation in progress")
             return
@@ -193,42 +187,22 @@ final class TimeOverlayWindow: NSWindow {
         let configuration = OverlayConfiguration(preferences: PreferencesStore.shared)
         applyAppearance(configuration, to: contentView)
 
-        // [EN] Read user's position preference from UserDefaults.
-        // [CN] 从 UserDefaults 读取用户位置偏好。
-        // [JP] UserDefaults から位置設定を読み込む。
         positionOnActiveScreen(position: configuration.position,
                                fontScale: configuration.fontScale)
 
-        // [EN] Update time string (HH:mm format — concise, glanceable).
-        // [CN] 更新时间字符串（HH:mm 格式 — 简洁、一目了然）。
-        // [JP] 時刻文字列を更新（HH:mm 形式 — 簡潔で一目瞭然）。
         contentView.updateTime(Self.timeFormatter.string(from: Date()))
 
-        // [EN] Read hold duration from UserDefaults (seconds). Clamp to valid range.
-        // [CN] 从 UserDefaults 读取停留时长（秒）。限制在有效范围内。
-        // [JP] UserDefaults から表示維持時間（秒）を読み込み。有効範囲に収める。
         let holdDuration = PreferencesStore.shared.durationSeconds
 
-        // [EN] Ensure window starts invisible before fade-in.
-        // [CN] 确保窗口在淡入前初始为不可见。
-        // [JP] フェードイン前にウィンドウを確実に非表示に。
         alphaValue = 0.0
         orderFront(nil)
 
-        // ── Phase 1: Fade in ──────────────────────────────────
-        // [EN] Animate alpha from 0 → 1.
-        // [CN] 透明度从 0 动画过渡到 1。
-        // [JP] 不透明度を 0 → 1 にアニメーション。
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = Constants.fadeInDuration
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             self.animator().alphaValue = 1.0
         }
 
-        // ── Phase 2: Hold → Fade out ─────────────────────────
-        // [EN] After the user-configured hold duration, animate alpha from 1 → 0.
-        // [CN] 等待用户设定的停留时间后，透明度从 1 动画过渡到 0。
-        // [JP] ユーザー設定の停止時間経過後、不透明度を 1 → 0 にアニメーション。
         DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(holdDuration)) { [weak self] in
             guard let self = self else { return }
             guard self.animationGeneration == generation else { return }
@@ -241,9 +215,6 @@ final class TimeOverlayWindow: NSWindow {
                 guard let self = self else { return }
                 guard self.animationGeneration == generation else { return }
                 self.orderOut(nil)
-                // [EN] Release re-entrancy guard.
-                // [CN] 释放防重入锁。
-                // [JP] 再入防止フラグを解放。
                 self.isAnimating = false
             }
         }

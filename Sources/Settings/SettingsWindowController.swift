@@ -152,15 +152,12 @@ private final class SettingsRootView: NSView {
             sidebar.bottomAnchor.constraint(equalTo: bottomAnchor),
             sidebar.widthAnchor.constraint(equalToConstant: 172),
 
-            // Settings button: pinned to top, centered horizontally.
             settingsButton.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: sidebarEdge),
             settingsButton.centerXAnchor.constraint(equalTo: sidebar.centerXAnchor),
 
-            // About button: pinned to bottom with the same margin, centered horizontally.
             aboutButton.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -sidebarEdge),
             aboutButton.centerXAnchor.constraint(equalTo: sidebar.centerXAnchor),
 
-            // Selection pills exactly overlay their respective buttons.
             settingsSelectionPill.topAnchor.constraint(equalTo: settingsButton.topAnchor),
             settingsSelectionPill.bottomAnchor.constraint(equalTo: settingsButton.bottomAnchor),
             settingsSelectionPill.leadingAnchor.constraint(equalTo: settingsButton.leadingAnchor),
@@ -363,9 +360,6 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         root.addArrangedSubview(spacer)
 
         configureConfirmButton()
-        // [EN] AppKit equivalent of HStack { Spacer(); Button(...) }.
-        // [CN] AppKit 版 HStack { Spacer(); Button(...) }，让按钮保持自然宽度并靠右。
-        // [JP] AppKit 版 HStack { Spacer(); Button(...) }。ボタンを自然幅のまま右寄せ。
         let buttonSpacer = NSView()
         buttonSpacer.translatesAutoresizingMaskIntoConstraints = false
         let buttonRow = NSStackView(views: [buttonSpacer, confirmButton])

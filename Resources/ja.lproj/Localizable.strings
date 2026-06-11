@@ -6,14 +6,6 @@
 "menu.toggle" = "オン/オフ";
 "menu.settings" = "設定...";
 "menu.quit" = "終了";
-"menu.about" = "時間、忘れてない？";
-
-/* Legacy menu labels */
-"menu.position" = "位置";
-"menu.interval" = "間隔";
-"menu.duration" = "表示時間";
-"menu.duration.full" = "表示時間";
-"menu.custom" = "カスタム...";
 
 /* About */
 "about.title" = "時間、忘れてない？";
@@ -58,13 +50,7 @@
 "position.bottomRight" = "右下";
 
 /* Alerts */
-"alert.ok" = "OK";
 "alert.cancel" = "キャンセル";
-"alert.invalidInput.title" = "入力が無効です";
-"alert.customInterval.title" = "カスタム間隔";
-"alert.customInterval.message" = "分数を入力してください (1 - %d):";
-"alert.customDuration.title" = "カスタム表示時間";
-"alert.customDuration.message" = "秒数を入力してください (1 - %d):";
 "alert.startup.title" = "ログイン時に「時間、忘れてない？」を自動的に起動しますか？";
 "alert.startup.message" = "追加後も、macOS の「システム設定 > 一般 > ログイン項目」でいつでも変更できます。";
 "alert.startup.yes" = "はい";
