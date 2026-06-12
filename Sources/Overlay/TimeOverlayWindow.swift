@@ -31,6 +31,7 @@ final class TimeOverlayWindow: NSWindow {
     private static let timeFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.dateFormat = "HH:mm"
+        fmt.timeZone = .current
         return fmt
     }()
 
@@ -59,9 +60,17 @@ final class TimeOverlayWindow: NSWindow {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         contentView = TimeOverlayView(frame: contentRect(forFrameRect: frame))
+
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(systemTimeZoneDidChange),
+                                               name: NSNotification.Name.NSSystemTimeZoneDidChange,
+                                               object: nil)
     }
 
     deinit {
+        NotificationCenter.default.removeObserver(self,
+                                                  name: NSNotification.Name.NSSystemTimeZoneDidChange,
+                                                  object: nil)
         stopClockUpdates()
     }
 
@@ -266,6 +275,15 @@ final class TimeOverlayWindow: NSWindow {
         clockTimer?.setEventHandler {}
         clockTimer?.cancel()
         clockTimer = nil
+    }
+
+    // 系统时区变化后重取 formatter 时区；所有访问收敛到主线程，避免 DateFormatter 并发读写。
+    @objc
+    private func systemTimeZoneDidChange() {
+        DispatchQueue.main.async { [weak self] in
+            Self.timeFormatter.timeZone = .current
+            self?.refreshDisplayedTime()
+        }
     }
 
     // 统一从系统当前时间生成显示文案，保证预览与提醒窗口使用同一时间来源。

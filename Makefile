@@ -3,7 +3,7 @@
 # No Xcode project required.
 
 APP_NAME          := Distracted
-BUNDLE_ID         := com.distracted.app
+BUNDLE_ID         := io.github.hope-peace-9.distracted
 VERSION           := 1.0.0
 BUILD_DIR         := build
 APP_BUNDLE        := $(BUILD_DIR)/$(APP_NAME).app
@@ -75,6 +75,7 @@ $(APP_BUNDLE): $(SOURCES) Info.plist $(LOCALIZED_RESOURCES) $(ASSET_IMAGES)
 	swiftc $(SOURCES) $(SWIFT_FLAGS) -target x86_64-apple-macos14.0 -o $(X86_64_BIN)
 	lipo -create $(ARM64_BIN) $(X86_64_BIN) -output $(APP_EXECUTABLE)
 	cp Info.plist $(APP_BUNDLE_PATH)/Contents/
+	/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $(BUNDLE_ID)" $(APP_BUNDLE_PATH)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(APP_BUNDLE_PATH)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(APP_BUNDLE_PATH)/Contents/Info.plist
 	rm -rf $(BUNDLE_RESOURCES)/*.lproj

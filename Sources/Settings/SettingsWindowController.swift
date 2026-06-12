@@ -630,6 +630,7 @@ private final class AboutPaneView: NSView {
 
     private let latestReleaseURL = URL(string: "https://api.github.com/repos/hope-peace-9/DistractedApp/releases/latest")!
     private let issueURL = URL(string: "https://github.com/hope-peace-9/DistractedApp/issues/new")!
+    private let developerURL = URL(string: "https://github.com/hope-peace-9")!
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -657,6 +658,16 @@ private final class AboutPaneView: NSView {
         message.font = .systemFont(ofSize: NSFont.systemFontSize)
         message.textColor = .labelColor
 
+        let developerButton = NSButton(title: "By hope-peace-9 · GitHub",
+                                       target: self,
+                                       action: #selector(openDeveloperGitHub))
+        developerButton.bezelStyle = .inline
+        developerButton.isBordered = false
+        developerButton.font = .systemFont(ofSize: NSFont.systemFontSize)
+        developerButton.contentTintColor = .secondaryLabelColor
+        developerButton.setButtonType(.momentaryChange)
+        developerButton.alignment = .left
+
         let version = NSTextField(labelWithString: L10n.aboutVersion(Constants.appVersion))
         version.textColor = .secondaryLabelColor
 
@@ -678,10 +689,15 @@ private final class AboutPaneView: NSView {
         topStack.addArrangedSubview(title)
         topStack.addArrangedSubview(message)
 
+        let versionStack = NSStackView(views: [developerButton, versionRow])
+        versionStack.orientation = .vertical
+        versionStack.alignment = .leading
+        versionStack.spacing = 6
+
         let bottomSpacer = NSView()
         bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
 
-        let bottomRow = NSStackView(views: [versionRow, bottomSpacer, bugReportButton])
+        let bottomRow = NSStackView(views: [versionStack, bottomSpacer, bugReportButton])
         bottomRow.orientation = .horizontal
         bottomRow.alignment = .centerY
         bottomRow.spacing = 12
@@ -700,6 +716,12 @@ private final class AboutPaneView: NSView {
             bottomRow.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -40),
             bottomRow.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -40)
         ])
+    }
+
+    // 开发者署名使用固定英文展示，点击后跳转到 GitHub 主页。
+    @objc
+    private func openDeveloperGitHub() {
+        NSWorkspace.shared.open(developerURL)
     }
 
     // 打开公开反馈页面前先提示隐私风险，避免用户误提交个人信息。
