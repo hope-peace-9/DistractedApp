@@ -16,7 +16,7 @@ import Foundation
 
 enum L10n {
 
-    // MARK: - Core Lookup
+    // MARK: - 核心查找
 
     /// [EN] Localize a key with optional printf-style arguments.
     /// [CN] 按 key 获取本地化字符串，并支持 printf 风格参数。
@@ -27,18 +27,18 @@ enum L10n {
         return String(format: format, locale: Locale.current, arguments: arguments)
     }
 
-    // MARK: - App
+    // MARK: - 应用
 
     static var appName: String { tr("app.name") }
     static var appDisplayName: String { tr("app.displayName") }
 
-    // MARK: - Menu
+    // MARK: - 菜单
 
     static var menuToggle: String { tr("menu.toggle") }
     static var menuSettings: String { tr("menu.settings") }
     static var menuQuit: String { tr("menu.quit") }
 
-    // MARK: - About
+    // MARK: - 关于
 
     static var aboutTitle: String { tr("about.title") }
     static var aboutMessage: String { tr("about.message") }
@@ -46,8 +46,24 @@ enum L10n {
     static func aboutSummary(intervalMinutes: Int, durationSeconds: Int, position: String) -> String {
         tr("about.summary", intervalMinutes, durationSeconds, position)
     }
+    static var aboutBugReport: String { tr("about.bugReport") }
+    static var aboutCheckUpdates: String { tr("about.checkUpdates") }
+    static var aboutPrivacyNoticeTitle: String { tr("about.privacyNotice.title") }
+    static var aboutPrivacyNoticeMessage: String { tr("about.privacyNotice.message") }
+    static var aboutContinue: String { tr("about.continue") }
+    static var aboutUpToDateTitle: String { tr("about.upToDate.title") }
+    static var aboutUpToDateMessage: String { tr("about.upToDate.message") }
+    static func aboutNewVersionTitle(_ version: String) -> String { tr("about.newVersion.title", version) }
+    static var aboutNewVersionMessage: String { tr("about.newVersion.message") }
+    static var aboutDownload: String { tr("about.download") }
+    static var aboutUpdateCheckFailedTitle: String { tr("about.updateCheckFailed.title") }
+    static var aboutUpdateCheckFailedMessage: String { tr("about.updateCheckFailed.message") }
+    static var aboutIssueTitle: String { tr("about.issue.title") }
+    static func aboutIssueBody(appVersion: String, macOSVersion: String) -> String {
+        tr("about.issue.body", appVersion, macOSVersion)
+    }
 
-    // MARK: - Settings
+    // MARK: - 设置
 
     static var settingsWindowTitle: String { tr("settings.window.title") }
     static var settingsSidebarSettings: String { tr("settings.sidebar.settings") }
@@ -73,7 +89,7 @@ enum L10n {
     static var settingsPreviewLabel: String { tr("settings.preview.label") }
     static var settingsConfirm: String { tr("settings.confirm") }
 
-    // MARK: - Positions
+    // MARK: - 位置
 
     static func positionName(for position: Constants.OverlayPosition) -> String {
         switch position {
@@ -98,7 +114,7 @@ enum L10n {
         }
     }
 
-    // MARK: - Alerts
+    // MARK: - 弹窗
 
     static var alertCancel: String { tr("alert.cancel") }
     static var alertStartupTitle: String { tr("alert.startup.title") }

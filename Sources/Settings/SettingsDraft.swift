@@ -21,6 +21,7 @@ struct SettingsDraft {
     var fontScale: Constants.FontScale
     var backgroundOpacity: Double
 
+    // 从当前持久化偏好生成一份可预览、可取消的内存草稿。
     init(preferences: PreferencesStore) {
         intervalMinutes = preferences.intervalMinutes
         durationSeconds = preferences.durationSeconds
@@ -29,6 +30,7 @@ struct SettingsDraft {
         backgroundOpacity = preferences.backgroundOpacity
     }
 
+    // 用户确认后才把草稿写回偏好存储。
     func apply(to preferences: PreferencesStore) {
         preferences.intervalMinutes = intervalMinutes
         preferences.durationSeconds = durationSeconds
@@ -43,12 +45,14 @@ struct OverlayConfiguration {
     var fontScale: Constants.FontScale
     var backgroundOpacity: Double
 
+    // 从持久化偏好生成悬浮窗配置，供正式提醒使用。
     init(preferences: PreferencesStore) {
         position = preferences.overlayPosition
         fontScale = preferences.fontScale
         backgroundOpacity = preferences.backgroundOpacity
     }
 
+    // 从设置草稿生成悬浮窗配置，供实时预览使用。
     init(draft: SettingsDraft) {
         position = draft.overlayPosition
         fontScale = draft.fontScale

@@ -26,7 +26,7 @@ import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-    // MARK: - Components
+    // MARK: - 组件
 
     private var statusBarController: StatusBarController?
     private var timerService: TimerService?
@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appStateCoordinator: AppStateCoordinator?
     private var appearancePrimerWindow: NSWindow?
 
-    // MARK: - Lifecycle
+    // MARK: - 生命周期
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("[Distracted] App launched — PID: \(ProcessInfo.processInfo.processIdentifier)")
@@ -70,33 +70,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         primeAppKitActiveState()
     }
 
-    // MARK: - Launch at Login Onboarding
+    // MARK: - 登录启动引导
 
-    // [EN] NSAlert has a fixed two-column layout (icon left, text right) that cannot
-    //      be overridden with accessoryView tricks. We replace it with a plain
-    //      NSWindow whose content view is a proper top-to-bottom Auto Layout stack:
-    //        1. App icon   — centered, 80 pt (64 × 1.25)
-    //        2. Title      — wrapping label, centered
-    //        3. Message    — wrapping label, secondary color, centered
-    //        4. Checkbox   — "Don't ask again", centered
-    //        5. Button row — Cancel | Yes, right-aligned per HIG
-    //
-    // [CN] NSAlert 有固定的左图标+右文字两栏结构，无法通过 accessoryView 覆盖。
-    //      改用普通 NSWindow，内容视图为纯自上而下的 Auto Layout 布局：
-    //        1. App 图标   — 居中，80pt (64 × 1.25)
-    //        2. 标题       — 换行标签，居中
-    //        3. 正文       — 换行标签，次要颜色，居中
-    //        4. 复选框     — "不再询问"，居中
-    //        5. 按钮行     — 取消 | 是的，按 HIG 靠右排列
-    //
-    // [JP] NSAlert は左アイコン・右テキストの2列固定レイアウトで、
-    //      accessoryView では上書きできない。通常の NSWindow に置き換え、
-    //      content view を純粋な縦方向 Auto Layout で構成する：
-    //        1. App アイコン  — 中央揃え、80pt (64 × 1.25)
-    //        2. タイトル      — 折り返しラベル、中央揃え
-    //        3. メッセージ    — 折り返しラベル、セカンダリカラー、中央揃え
-    //        4. チェックボックス — "今後表示しない"、中央揃え
-    //        5. ボタン行      — キャンセル | はい、HIG に従い右揃え
+    // NSAlert 的固定图标与文字布局不适合这个引导弹窗，因此使用小型自定义窗口保持内容居中紧凑。
     private func promptForLaunchAtLoginIfNeeded(preferences: PreferencesStore) {
         guard !preferences.hasPromptedForStartup else { return }
 
@@ -129,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // 优先读取 bundle 内应用图标，缺失时回退到系统提供的应用图标。
     private static func bundleAppIconImage() -> NSImage {
         if let named = NSImage(named: "AppIcon") {
             return named
@@ -140,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return NSApp.applicationIconImage ?? NSImage()
     }
 
+    // 构建登录启动引导窗口，并返回模态回调处理器以维持 target 生命周期。
     private func buildStartupWindow() -> (window: NSWindow, checkbox: NSButton, handler: StartupModalHandler) {
         let handler      = StartupModalHandler()
         let windowWidth  : CGFloat = 300
@@ -236,53 +214,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return (window, checkbox, handler)
     }
 
-    // MARK: - AppKit Active-State Priming
+    // MARK: - AppKit 激活态预热
 
-    /// [EN] LSUIElement apps launch in an *inactive* NSApp state. AppKit controls
-    ///      embedded in `NSMenuItem.view` (such as `NSSwitch`) read `NSApp.isActive`
-    ///      when deciding whether to draw the accent-colored "on" track or the
-    ///      inactive gray track. Without intervention, the very first time the
-    ///      user opens the status-bar menu the switch renders as gray even though
-    ///      its state is `.on`. The Settings window doesn't have this problem
-    ///      because `showAndFocus()` calls `NSApp.activate(...)`, which flips the
-    ///      process into the active state.
-    ///
-    ///      We fix this at launch with two complementary primers:
-    ///      1) Activate NSApp explicitly.
-    ///      2) Briefly attach an off-screen, fully transparent `NSWindow` so the
-    ///         AppKit window/appearance machinery is initialized before any
-    ///         transient menu window is shown. Some macOS builds need this extra
-    ///         priming for menu-hosted NSSwitch to pick up the active accent color.
-    ///
-    /// [CN] LSUIElement 应用启动后 NSApp 默认处于非 active 状态。嵌入到
-    ///      `NSMenuItem.view` 中的 AppKit 控件（例如 `NSSwitch`）在决定要画
-    ///      强调色轨迹还是失效灰轨迹时，会读取 `NSApp.isActive`。不做处理时，
-    ///      用户**首次**打开状态栏菜单看到的开关即使 `state = .on` 也会是灰色。
-    ///      设置窗口没有这个问题，是因为 `showAndFocus()` 调用了
-    ///      `NSApp.activate(...)`，把进程切到 active。
-    ///
-    ///      这里在启动时做两层 priming：
-    ///      1) 显式激活 NSApp。
-    ///      2) 短暂挂一个离屏全透明的 `NSWindow`，让 AppKit 的窗口/外观管理
-    ///         在任何菜单窗口出现之前先初始化。某些 macOS 构建需要这一步，
-    ///         菜单中的 NSSwitch 才能正确拾取激活强调色。
-    ///
-    /// [JP] LSUIElement アプリは起動時 NSApp が非アクティブ状態です。
-    ///      `NSMenuItem.view` に埋め込まれた AppKit コントロール
-    ///      （例: `NSSwitch`）はアクセント色のトラックを描くか
-    ///      非アクティブのグレートラックを描くかを決める際に
-    ///      `NSApp.isActive` を参照します。対策しないと、ユーザーが
-    ///      ステータスメニューを**初めて**開いた時、`state = .on` でも
-    ///      スイッチがグレーで表示されます。設定ウィンドウは
-    ///      `showAndFocus()` で `NSApp.activate(...)` を呼ぶため
-    ///      この問題が出ません。
-    ///
-    ///      起動時に二段構えで初期化します:
-    ///      1) NSApp を明示的に activate する。
-    ///      2) 完全に透明なオフスクリーン `NSWindow` を一瞬だけ表示し、
-    ///         AppKit のウィンドウ/外観管理を先に初期化する。一部の
-    ///         macOS ビルドでは、これがあって初めてメニュー内 NSSwitch が
-    ///         アクティブのアクセント色を取得します。
+    /// LSUIElement 应用可能以非 active 的 NSApp 状态启动。NSSwitch 等菜单内控件会读取该状态决定强调色，
+    /// 因此首次打开菜单时可能把已开启的开关画成失效灰色。这里通过短暂挂载离屏窗口提前预热 AppKit 状态。
     private func primeAppKitActiveState() {
         NSApp.activate(ignoringOtherApps: true)
 
@@ -311,8 +246,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
-    // MARK: - AX Permission Self-Check
+    // MARK: - AX 权限自检
 
+    // 仅输出辅助功能权限状态；当前应用不依赖该权限运行。
     private func checkAccessibilityPermission() {
         if AXIsProcessTrusted() {
             print("[Distracted] ✓ Accessibility permission granted (not required)")
@@ -321,8 +257,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Power Notifications (Wake / Sleep)
+    // MARK: - 电源通知
 
+    // 监听系统休眠、唤醒与屏幕参数变化，用于校准计时器和清理可见弹窗。
     private func registerForPowerNotifications() {
         let ws = NSWorkspace.shared
         let workspaceNC = ws.notificationCenter
@@ -380,7 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appStateCoordinator?.screenParametersDidChange()
     }
 
-    // MARK: - Overlay Display
+    // MARK: - 悬浮窗显示
 
     /// [EN] Triggered by TimerService when the interval boundary is reached
     ///      (or on wake if a flash was missed during sleep).
@@ -391,11 +328,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///      TimerService から呼び出される。オーバーレイ内で UserDefaults から
     ///      位置と持続時間を自ら読み取る。
     private func showTimeOverlay() {
-        overlayWindow?.showAndFadeOut()
+        if let appStateCoordinator {
+            appStateCoordinator.reminderDidFire()
+        } else {
+            overlayWindow?.showAndFadeOut()
+        }
     }
 }
 
-// MARK: - Startup Modal Handler
+// MARK: - 启动模态处理器
 
 private final class StartupModalHandler: NSObject {
     @objc func confirm(_ sender: Any?) { NSApp.stopModal(withCode: .OK) }

@@ -12,6 +12,20 @@
 "about.message" = "一眼找回时间感。";
 "about.summary" = "每 %d 分钟 · 停留 %d 秒 · %@";
 "about.version" = "v%@";
+"about.bugReport" = "Bug 反馈";
+"about.checkUpdates" = "检查更新";
+"about.privacyNotice.title" = "打开 GitHub 反馈";
+"about.privacyNotice.message" = "我们将带您前往 GitHub 提交反馈，请注意在公开页面保护您的个人隐私信息。";
+"about.continue" = "继续";
+"about.upToDate.title" = "当前版本已是最新";
+"about.upToDate.message" = "当前版本已是最新。";
+"about.newVersion.title" = "发现新版本 %@";
+"about.newVersion.message" = "GitHub 上已有新版本可供下载。";
+"about.download" = "前往下载";
+"about.updateCheckFailed.title" = "无法检查更新";
+"about.updateCheckFailed.message" = "请检查网络连接后稍后再试。";
+"about.issue.title" = "Bug 反馈";
+"about.issue.body" = "App 版本：%@\nmacOS 版本：%@\n\n问题描述：\n\n复现步骤：\n1. \n2. \n3. \n\n预期结果：\n\n实际结果：\n";
 
 /* Settings window */
 "settings.window.title" = "设置";

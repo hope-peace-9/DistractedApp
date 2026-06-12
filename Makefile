@@ -4,11 +4,16 @@
 
 APP_NAME          := Distracted
 BUNDLE_ID         := com.distracted.app
+VERSION           := 1.0.0
 BUILD_DIR         := build
 APP_BUNDLE        := $(BUILD_DIR)/$(APP_NAME).app
 APP_BUNDLE_PATH   := $(APP_BUNDLE)
 BUNDLE_RESOURCES  := $(APP_BUNDLE_PATH)/Contents/Resources
-SWIFT_FLAGS       := -target arm64-apple-macos14.0 -framework AppKit -framework ServiceManagement -O -whole-module-optimization
+DMG_PATH          := $(BUILD_DIR)/$(APP_NAME)-$(VERSION).dmg
+SWIFT_FLAGS       := -framework AppKit -framework ServiceManagement -O -whole-module-optimization
+ARM64_BIN         := $(BUILD_DIR)/$(APP_NAME)-arm64
+X86_64_BIN        := $(BUILD_DIR)/$(APP_NAME)-x86_64
+APP_EXECUTABLE    := $(APP_BUNDLE_PATH)/Contents/MacOS/$(APP_NAME)
 
 SOURCES := \
 	Sources/main.swift \
@@ -31,7 +36,7 @@ MENUBAR_2X_PNG      := Resources/menubar@2x.png
 ICONSET_DIR         := $(BUILD_DIR)/AppIcon.iconset
 APP_ICON_ICNS       := $(BUNDLE_RESOURCES)/AppIcon.icns
 
-.PHONY: all build clean run bundle-icons
+.PHONY: all build clean run dmg bundle-icons
 
 all: build
 
@@ -66,14 +71,24 @@ $(APP_BUNDLE): $(SOURCES) Info.plist $(LOCALIZED_RESOURCES) $(ASSET_IMAGES)
 	rm -f $(BUNDLE_RESOURCES)/menubar.png $(BUNDLE_RESOURCES)/menubar@2x.png
 	cp -f $(MENUBAR_PNG) $(BUNDLE_RESOURCES)/menubar.png
 	cp -f $(MENUBAR_2X_PNG) $(BUNDLE_RESOURCES)/menubar@2x.png
-	swiftc $(SOURCES) $(SWIFT_FLAGS) -o $(APP_BUNDLE_PATH)/Contents/MacOS/$(APP_NAME)
+	swiftc $(SOURCES) $(SWIFT_FLAGS) -target arm64-apple-macos14.0 -o $(ARM64_BIN)
+	swiftc $(SOURCES) $(SWIFT_FLAGS) -target x86_64-apple-macos14.0 -o $(X86_64_BIN)
+	lipo -create $(ARM64_BIN) $(X86_64_BIN) -output $(APP_EXECUTABLE)
 	cp Info.plist $(APP_BUNDLE_PATH)/Contents/
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(APP_BUNDLE_PATH)/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(APP_BUNDLE_PATH)/Contents/Info.plist
 	rm -rf $(BUNDLE_RESOURCES)/*.lproj
 	cp -R Resources/*.lproj $(BUNDLE_RESOURCES)/
 	@test -f $(APP_ICON_ICNS) || (echo "error: $(APP_ICON_ICNS) missing" && exit 1)
 	@echo "==> Signing with ad-hoc identity…"
 	codesign --force --deep --sign - $(APP_BUNDLE_PATH)
 	@echo "✓  $(APP_BUNDLE_PATH) built successfully"
+
+# ── Lightweight DMG package ───────────────────────────────────
+dmg: build
+	rm -f $(DMG_PATH)
+	hdiutil create -volname "$(APP_NAME)" -srcfolder $(APP_BUNDLE_PATH) -ov -format UDZO $(DMG_PATH)
+	@echo "✓  $(DMG_PATH) created successfully"
 
 # ── Run ────────────────────────────────────────────────────────
 run: build

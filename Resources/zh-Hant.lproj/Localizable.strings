@@ -12,6 +12,20 @@
 "about.message" = "一眼找回時間感。";
 "about.summary" = "每 %d 分鐘 · 停留 %d 秒 · %@";
 "about.version" = "v%@";
+"about.bugReport" = "Bug 回報";
+"about.checkUpdates" = "檢查更新";
+"about.privacyNotice.title" = "開啟 GitHub 回報";
+"about.privacyNotice.message" = "我們將帶您前往 GitHub 提交回報，請注意在公開頁面保護您的個人隱私資訊。";
+"about.continue" = "繼續";
+"about.upToDate.title" = "目前版本已是最新";
+"about.upToDate.message" = "目前版本已是最新。";
+"about.newVersion.title" = "發現新版本 %@";
+"about.newVersion.message" = "GitHub 上已有新版本可供下載。";
+"about.download" = "前往下載";
+"about.updateCheckFailed.title" = "無法檢查更新";
+"about.updateCheckFailed.message" = "請檢查網路連線後稍後再試。";
+"about.issue.title" = "Bug 回報";
+"about.issue.body" = "App 版本：%@\nmacOS 版本：%@\n\n問題描述：\n\n重現步驟：\n1. \n2. \n3. \n\n預期結果：\n\n實際結果：\n";
 
 /* Settings window */
 "settings.window.title" = "設定";

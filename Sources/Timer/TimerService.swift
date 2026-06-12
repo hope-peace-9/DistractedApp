@@ -4,34 +4,14 @@ import Foundation
 //  TimerService — absolute-timestamp‑backed interval timer
 // ═══════════════════════════════════════════════════════════════
 //
-//  [EN] Drives the periodic flash schedule.
-//       Key design decisions:
-//       • Uses **absolute timestamps** (Date), not a repeating Timer, to
-//         survive sleep/wake cycles without cumulative drift.
-//       • pause() / recalibrate() are called from AppDelegate in response
-//         to NSWorkspace sleep/wake notifications.
-//       • setInterval() lets the user change the interval at runtime;
-//         the schedule is immediately recomputed from the next boundary.
-//
-//  [CN] 驱动周期性闪烁的核心定时器。
-//       关键设计：
-//       • 使用**绝对时间戳**（Date），而非重复 Timer，以在休眠/唤醒周期中
-//         避免累积漂移。
-//       • pause() / recalibrate() 由 AppDelegate 响应系统休眠/唤醒通知时调用。
-//       • setInterval() 支持运行时修改间隔，立即基于下个边界重新计算。
-//
-//  [JP] 定期的な点滅を駆動するタイマーサービス。
-//       設計の要点：
-//       • 絶対タイムスタンプ（Date）を使用。繰り返し Timer ではなく、
-//         スリープ/ウェイクによる累積ドリフトを防止。
-//       • pause()/recalibrate() は AppDelegate がシステムのスリープ/ウェイク
-//         通知に応じて呼び出す。
-//       • setInterval() で実行中に間隔変更可能。即座に次の境界から再計算。
+//  [EN] Drives reminder scheduling with absolute Date targets and one-shot DispatchSourceTimers.
+//  [CN] 使用绝对时间戳和一次性 DispatchSourceTimer 调度提醒，避免休眠、唤醒或 UI 交互造成累计漂移。
+//  [JP] 絶対時刻と単発 DispatchSourceTimer でリマインダーを管理し、スリープ復帰や UI 操作によるズレを抑える。
 // ═══════════════════════════════════════════════════════════════
 
 final class TimerService {
 
-    // MARK: - Properties
+    // MARK: - 属性
 
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.distracted.timer",
@@ -56,7 +36,7 @@ final class TimerService {
     private var onFlash: (() -> Void)?
     private var isPaused = false
 
-    // MARK: - Init
+    // MARK: - 初始化
 
     /// [EN] Create the timer service.
     /// - Parameters:
@@ -84,7 +64,7 @@ final class TimerService {
         timer?.cancel()
     }
 
-    // MARK: - Scheduling (private)
+    // MARK: - 私有调度
 
     /// [EN] Schedule the next flash.
     ///      If targetDate is set and still in the future, use it directly.
@@ -115,10 +95,12 @@ final class TimerService {
         }
     }
 
+    // 从当前时间向后计算一个完整周期，用于用户重启或确认设置后的新节奏。
     private func nextTargetFromNow() -> Date {
         Date().addingTimeInterval(interval)
     }
 
+    // 优先沿用上一次目标时间推进，避免回调执行时间影响提醒节奏。
     private func nextTargetAfterFire(previousTarget: Date?) -> Date {
         let now = Date()
         guard let previousTarget else {
@@ -166,13 +148,14 @@ final class TimerService {
         timer = t
     }
 
+    // 仅在串行队列内取消底层计时器，避免跨线程重复 cancel。
     private func cancelTimerLocked() {
         timer?.setEventHandler {}
         timer?.cancel()
         timer = nil
     }
 
-    // MARK: - Public API
+    // MARK: - 对外接口
 
     /// [EN] Cancel pending timer. Preserves `targetDate` so we can detect misses on wake.
     /// [CN] 取消待执行的定时器。保留 `targetDate` 以便唤醒时检测是否错过。

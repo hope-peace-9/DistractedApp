@@ -1,7 +1,7 @@
 import Cocoa
 
 // ═══════════════════════════════════════════════════════════════
-//  AppStateCoordinator — Phase 3 state arbitration
+//  AppStateCoordinator — runtime state arbitration
 // ═══════════════════════════════════════════════════════════════
 //
 //  [EN] Owns the runtime state transitions between menu toggle,
@@ -15,7 +15,7 @@ import Cocoa
 
 final class AppStateCoordinator {
 
-    // MARK: - Dependencies
+    // MARK: - 依赖
 
     private let preferences: PreferencesStore
     private let timerService: TimerService
@@ -26,7 +26,7 @@ final class AppStateCoordinator {
     private var isSettingsPreviewing = false
     private var didConfirmSettings = false
 
-    // MARK: - Init
+    // MARK: - 初始化
 
     init(preferences: PreferencesStore,
          timerService: TimerService,
@@ -47,8 +47,9 @@ final class AppStateCoordinator {
         }
     }
 
-    // MARK: - Wiring
+    // MARK: - 回调绑定
 
+    // 将菜单栏动作绑定到统一状态入口，避免 UI 控件直接操作计时器。
     private func wireStatusBar() {
         statusBarController.onToggleChange = { [weak self] isEnabled in
             self?.setReminderEnabled(isEnabled)
@@ -58,14 +59,19 @@ final class AppStateCoordinator {
         }
     }
 
-    // MARK: - User Intent
+    // MARK: - 用户意图
 
+    // 统一处理提醒开关变化，并根据是否处于设置预览态选择对应的计时器策略。
     func setReminderEnabled(_ isEnabled: Bool) {
         preferences.isEnabled = isEnabled
         statusBarController.updateToggle(isOn: isEnabled)
 
         if isSettingsPreviewing {
-            timerService.pause()
+            if isEnabled {
+                timerService.restart(interval: preferences.intervalSeconds)
+            } else {
+                timerService.pause()
+            }
             return
         }
 
@@ -77,8 +83,9 @@ final class AppStateCoordinator {
         }
     }
 
-    // MARK: - Settings Preview
+    // MARK: - 设置预览
 
+    // 打开设置窗口并进入预览态；窗口复用以避免重复创建 AppKit 控件树。
     func openSettings() {
         if settingsWindowController == nil {
             let controller = SettingsWindowController(preferences: preferences)
@@ -96,10 +103,10 @@ final class AppStateCoordinator {
 
         isSettingsPreviewing = true
         didConfirmSettings = false
-        timerService.pause()
         settingsWindowController?.showAndFocus()
     }
 
+    // 退出预览态时按确认结果决定是否重启计时器，取消则保留原有提醒节奏。
     private func settingsWillClose() {
         let confirmed = didConfirmSettings
         didConfirmSettings = false
@@ -109,26 +116,34 @@ final class AppStateCoordinator {
         if preferences.isEnabled {
             if confirmed {
                 timerService.restart(interval: preferences.intervalSeconds)
-            } else {
-                timerService.resume(recomputeFromNow: true)
             }
         } else {
             timerService.pause()
         }
     }
 
+    // 用内存草稿驱动悬浮窗预览，不写入持久化偏好。
     private func previewDraft(_ draft: SettingsDraft) {
         if isSettingsPreviewing {
             overlayWindow.showPreview(configuration: OverlayConfiguration(draft: draft))
         }
     }
 
+    // 确认后才把草稿写入 PreferencesStore。
     private func confirmDraft(_ draft: SettingsDraft) {
         draft.apply(to: preferences)
         didConfirmSettings = true
     }
 
-    // MARK: - System Events
+    // MARK: - 提醒显示
+
+    // 设置窗口打开时保持提醒节奏继续推进，但不让计划提醒打断实时预览界面。
+    func reminderDidFire() {
+        guard !isSettingsPreviewing else { return }
+        overlayWindow.showAndFadeOut()
+    }
+
+    // MARK: - 系统事件
 
     func systemWillSleep() {
         overlayWindow.hideImmediately()
@@ -137,7 +152,11 @@ final class AppStateCoordinator {
 
     func systemDidWake() {
         if isSettingsPreviewing {
-            timerService.pause()
+            if preferences.isEnabled {
+                timerService.recalibrate()
+            } else {
+                timerService.pause()
+            }
             overlayWindow.showPreview()
             return
         }

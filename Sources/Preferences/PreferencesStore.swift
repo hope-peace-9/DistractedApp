@@ -6,23 +6,23 @@ import Foundation
 //
 //  [EN] Responsibilities:
 //       1. Centralise all UserDefaults keys and fallback values.
-//       2. Clamp persisted values into valid Phase 3 ranges.
-//       3. Keep legacy raw values readable while new UI is introduced.
+//       2. Clamp persisted values into supported product ranges.
+//       3. Keep legacy raw values readable across preference migrations.
 //
 //  [CN] 职责：
 //       1. 集中管理全部 UserDefaults 键与默认值。
-//       2. 将持久化数据限制在 Phase 3 的合法范围内。
-//       3. 在新 UI 逐步接入期间兼容旧 raw value。
+//       2. 将持久化数据限制在当前产品支持的合法范围内。
+//       3. 在偏好迁移期间兼容历史 raw value。
 //
 //  [JP] 責務：
 //       1. UserDefaults のキーと既定値を一元管理。
-//       2. 保存値を Phase 3 の有効範囲に丸める。
-//       3. 新 UI 導入中も旧 raw value を読み取れるようにする。
+//       2. 保存値を現在サポートする範囲に丸める。
+//       3. 設定移行時も旧 raw value を読み取れるようにする。
 // ═══════════════════════════════════════════════════════════════
 
 final class PreferencesStore {
 
-    // MARK: - Shared
+    // MARK: - 单例
 
     static let shared = PreferencesStore()
 
@@ -33,7 +33,7 @@ final class PreferencesStore {
         ensureSchemaVersion()
     }
 
-    // MARK: - Reminder Enabled
+    // MARK: - 提醒开关
 
     var isEnabled: Bool {
         get {
@@ -47,7 +47,7 @@ final class PreferencesStore {
         }
     }
 
-    // MARK: - Interval
+    // MARK: - 提醒间隔
 
     var intervalMinutes: Int {
         get {
@@ -70,7 +70,7 @@ final class PreferencesStore {
         TimeInterval(intervalMinutes * 60)
     }
 
-    // MARK: - Duration
+    // MARK: - 停留时间
 
     var durationSeconds: Int {
         get {
@@ -89,7 +89,7 @@ final class PreferencesStore {
         }
     }
 
-    // MARK: - Position
+    // MARK: - 显示位置
 
     var overlayPosition: Constants.OverlayPosition {
         get {
@@ -101,14 +101,14 @@ final class PreferencesStore {
         }
     }
 
-    /// [EN] Legacy String bridge used by the current overlay/menu until Phase 3 UI lands.
-    /// [CN] 旧 String 桥接：供当前弹窗/菜单继续使用，直到 Phase 3 UI 接入。
-    /// [JP] 既存のオーバーレイ/メニュー向け String ブリッジ。
+    /// [EN] Raw-value bridge for legacy callers and persisted settings.
+    /// [CN] 兼容历史调用方和已持久化设置的 raw value 桥接。
+    /// [JP] 旧呼び出し元と保存済み設定のための raw value ブリッジ。
     var overlayPositionRawValue: String {
         overlayPosition.rawValue
     }
 
-    // MARK: - Visuals
+    // MARK: - 视觉设置
 
     var fontScale: Constants.FontScale {
         get {
@@ -134,7 +134,7 @@ final class PreferencesStore {
         }
     }
 
-    // MARK: - Startup Onboarding
+    // MARK: - 启动引导
 
     var hasPromptedForStartup: Bool {
         get {
@@ -145,21 +145,24 @@ final class PreferencesStore {
         }
     }
 
-    // MARK: - Schema
+    // MARK: - 数据结构版本
 
+    // 初始化或升级偏好结构版本，为后续迁移保留入口。
     private func ensureSchemaVersion() {
         if defaults.integer(forKey: Constants.UserDefaultsKey.schemaVersion) < 1 {
             defaults.set(1, forKey: Constants.UserDefaultsKey.schemaVersion)
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - 辅助方法
 
+    // 将整数偏好限制在产品支持范围内，非法或缺失值回退到默认值。
     private static func clamp(_ value: Int, min: Int, max: Int, fallback: Int) -> Int {
         guard value >= min else { return fallback }
         return Swift.min(Swift.max(value, min), max)
     }
 
+    // 读取位置偏好时兼容当前枚举和旧版本 raw value。
     private static func normalizedPosition(from raw: String?) -> Constants.OverlayPosition {
         guard let raw else { return .center }
 

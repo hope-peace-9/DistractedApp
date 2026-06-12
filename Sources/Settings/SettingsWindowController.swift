@@ -1,7 +1,7 @@
 import Cocoa
 
 // ═══════════════════════════════════════════════════════════════
-//  SettingsWindowController — HIG-polished Settings UI
+//  SettingsWindowController — 设置窗口 / 設定ウィンドウ
 // ═══════════════════════════════════════════════════════════════
 //
 //  [EN] Pure AppKit settings window. Edits stay in an in-memory
@@ -50,6 +50,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // 打开前重新读取持久化偏好，保证设置窗口总是反映当前状态。
     func showAndFocus() {
         rootView.refreshFromPreferences()
         showWindow(nil)
@@ -57,12 +58,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    // 窗口关闭时通知协调层收尾预览态和计时器状态。
     func windowWillClose(_ notification: Notification) {
         onWindowWillClose?()
     }
 }
 
-// MARK: - Root
+// MARK: - 根视图
 
 private final class SettingsRootView: NSView {
 
@@ -90,6 +92,7 @@ private final class SettingsRootView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // 从持久化偏好重建草稿，并回到设置页作为默认入口。
     func refreshFromPreferences() {
         settingsPane.resetDraftFromPreferences()
         showSettings()
@@ -182,6 +185,7 @@ private final class SettingsRootView: NSView {
         }
     }
 
+    // 统一配置侧边栏按钮，使两个入口在尺寸、样式和阴影上保持一致。
     private func configureSidebarButton(_ button: NSButton, action: Selector) {
         button.target = self
         button.action = action
@@ -194,6 +198,7 @@ private final class SettingsRootView: NSView {
         applyButtonShadow(button)
     }
 
+    // 根据明暗模式切换投影策略，避免暗色侧边栏里黑色阴影不可见。
     private func applyButtonShadow(_ button: NSButton) {
         let isDark = button.effectiveAppearance
             .bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -222,12 +227,14 @@ private final class SettingsRootView: NSView {
         }
     }
 
+    // 系统外观变化时重新计算按钮投影色，避免 CGColor 快照停留在旧外观。
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         applyButtonShadow(settingsButton)
         applyButtonShadow(aboutButton)
     }
 
+    // 切换到设置页，并同步侧边栏选中态。
     @objc
     private func showSettings() {
         settingsButton.state = .on
@@ -237,6 +244,7 @@ private final class SettingsRootView: NSView {
         setDetailView(settingsPane)
     }
 
+    // 切换到关于页，并同步侧边栏选中态。
     @objc
     private func showAbout() {
         settingsButton.state = .off
@@ -246,6 +254,7 @@ private final class SettingsRootView: NSView {
         setDetailView(aboutPane)
     }
 
+    // 替换右侧详情区域内容，并让新视图完全贴合容器。
     private func setDetailView(_ view: NSView) {
         detailContainer.subviews.forEach { $0.removeFromSuperview() }
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -259,7 +268,7 @@ private final class SettingsRootView: NSView {
     }
 }
 
-// MARK: - Settings Pane
+// MARK: - 设置面板
 
 private final class SettingsPaneView: NSView, NSTextFieldDelegate {
 
@@ -299,6 +308,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // 从偏好重建当前草稿，用于取消后再次打开时恢复真实持久化状态。
     func resetDraftFromPreferences() {
         draft = SettingsDraft(preferences: preferences)
         lastValidInterval = draft.intervalMinutes
@@ -307,6 +317,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         onDraftChanged?(draft)
     }
 
+    // 构建设置页表单，并让底部确认按钮贴近右下角。
     private func buildUI() {
         let root = NSStackView()
         root.orientation = .vertical
@@ -386,6 +397,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         ])
     }
 
+    // 生成统一的段落标题，避免每个设置分组重复样式配置。
     private func sectionTitle(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text)
         label.font = .systemFont(ofSize: 17, weight: .semibold)
@@ -393,6 +405,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         return label
     }
 
+    // 生成 AppKit 原生分割线，用于区分设置分组。
     private func divider() -> NSBox {
         let box = NSBox()
         box.boxType = .separator
@@ -401,6 +414,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         return box
     }
 
+    // 配置数字输入框的基础样式和校验代理。
     private func configureField(_ field: NSTextField, placeholder: String) {
         field.placeholderString = placeholder
         field.delegate = self
@@ -418,6 +432,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         field.layer?.shadowOffset = NSSize(width: 0, height: -1)
     }
 
+    // 构造「标签 - 控件 - 单位」三段式设置行。
     private func formRow(label: String, control: NSView, unit: String) -> NSStackView {
         let name = NSTextField(labelWithString: label)
         name.alignment = .right
@@ -437,6 +452,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         return row
     }
 
+    // 填充字号选项，并通过 tag 绑定到 FontScale 枚举。
     private func configureFontPopup() {
         fontPopup.addItem(withTitle: L10n.settingsFontSizeSmall)
         fontPopup.lastItem?.tag = tag(for: .small)
@@ -450,6 +466,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         fontPopup.widthAnchor.constraint(equalToConstant: 144).isActive = true
     }
 
+    // 配置背景透明度滑块的取值范围和回调。
     private func configureOpacitySlider() {
         opacitySlider.target = self
         opacitySlider.action = #selector(opacityChanged(_:))
@@ -457,6 +474,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         opacitySlider.widthAnchor.constraint(equalToConstant: 190).isActive = true
     }
 
+    // 构造透明度设置行，并在右侧显示百分比。
     private func opacityRow() -> NSStackView {
         let name = NSTextField(labelWithString: L10n.settingsOpacityLabel)
         name.alignment = .right
@@ -475,6 +493,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         return row
     }
 
+    // 配置确认按钮的快捷键和横向布局优先级。
     private func configureConfirmButton() {
         confirmButton.target = self
         confirmButton.action = #selector(confirm)
@@ -485,6 +504,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         confirmButton.setContentCompressionResistancePriority(.required, for: .horizontal)
     }
 
+    // 将草稿值同步回控件，避免 UI 与内存状态分离。
     private func refreshFieldsFromDraft() {
         intervalField.stringValue = "\(draft.intervalMinutes)"
         durationField.stringValue = "\(draft.durationSeconds)"
@@ -494,6 +514,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         opacityValueLabel.stringValue = L10n.settingsOpacityValue(Int(draft.backgroundOpacity * 100))
     }
 
+    // 输入过程中只保留数字，并即时应用合法值以驱动实时预览。
     func controlTextDidChange(_ obj: Notification) {
         guard let field = obj.object as? NSTextField else { return }
         let digits = field.stringValue.filter(\.isNumber)
@@ -508,6 +529,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         }
     }
 
+    // 校验提醒间隔输入，非法值回退到上一次有效值。
     private func applyIntervalInput() {
         guard !intervalField.stringValue.isEmpty else { return }
         guard let value = Int(intervalField.stringValue),
@@ -523,6 +545,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         onDraftChanged?(draft)
     }
 
+    // 校验停留时间输入，非法值回退到上一次有效值。
     private func applyDurationInput() {
         guard !durationField.stringValue.isEmpty else { return }
         guard let value = Int(durationField.stringValue),
@@ -538,16 +561,19 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         onDraftChanged?(draft)
     }
 
+    // 在指定输入框旁显示轻量级原生气泡错误提示。
     private func showError(_ anchor: NSTextField, text: String, edge: NSRectEdge) {
         validationPopover.show(message: text, anchoredTo: anchor, preferredEdge: edge)
     }
 
+    // 位置矩阵变化后更新草稿并触发预览。
     @objc
     private func positionChanged(_ sender: PositionMatrixControl) {
         draft.overlayPosition = sender.selectedPosition
         onDraftChanged?(draft)
     }
 
+    // 字号下拉框变化后映射为 FontScale 并触发预览。
     @objc
     private func fontScaleChanged(_ sender: NSPopUpButton) {
         switch sender.selectedTag() {
@@ -561,6 +587,7 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         onDraftChanged?(draft)
     }
 
+    // 透明度滑块变化后同步百分比文案并触发预览。
     @objc
     private func opacityChanged(_ sender: NSSlider) {
         draft.backgroundOpacity = sender.doubleValue
@@ -568,11 +595,13 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
         onDraftChanged?(draft)
     }
 
+    // 用户确认后把草稿交给外层协调者持久化。
     @objc
     private func confirm() {
         onConfirm?(draft)
     }
 
+    // 为弹窗选项提供稳定 tag，避免依赖本地化后的显示文字。
     private func tag(for scale: Constants.FontScale) -> Int {
         switch scale {
         case .small:
@@ -585,9 +614,22 @@ private final class SettingsPaneView: NSView, NSTextFieldDelegate {
     }
 }
 
-// MARK: - About Pane
+// MARK: - 关于面板
 
 private final class AboutPaneView: NSView {
+
+    private struct LatestRelease: Decodable {
+        let tagName: String
+        let htmlURL: URL
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case htmlURL = "html_url"
+        }
+    }
+
+    private let latestReleaseURL = URL(string: "https://api.github.com/repos/hope-peace-9/DistractedApp/releases/latest")!
+    private let issueURL = URL(string: "https://github.com/hope-peace-9/DistractedApp/issues/new")!
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -599,13 +641,13 @@ private final class AboutPaneView: NSView {
         buildUI()
     }
 
+    // 构建关于页内容，并将版本/更新与反馈入口分别固定在底部两端。
     private func buildUI() {
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 12
-        stack.edgeInsets = NSEdgeInsets(top: 40, left: 40, bottom: 40, right: 40)
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        let topStack = NSStackView()
+        topStack.orientation = .vertical
+        topStack.alignment = .leading
+        topStack.spacing = 12
+        topStack.translatesAutoresizingMaskIntoConstraints = false
 
         let title = NSTextField(labelWithString: L10n.aboutTitle)
         title.font = .systemFont(ofSize: 26, weight: .semibold)
@@ -615,23 +657,161 @@ private final class AboutPaneView: NSView {
         message.font = .systemFont(ofSize: NSFont.systemFontSize)
         message.textColor = .labelColor
 
-        let version = NSTextField(labelWithString: L10n.aboutVersion("1.0.0"))
+        let version = NSTextField(labelWithString: L10n.aboutVersion(Constants.appVersion))
         version.textColor = .secondaryLabelColor
 
-        stack.addArrangedSubview(title)
-        stack.addArrangedSubview(message)
-        stack.addArrangedSubview(version)
-        addSubview(stack)
+        let checkUpdatesButton = NSButton(title: L10n.aboutCheckUpdates,
+                                          target: self,
+                                          action: #selector(checkForUpdates))
+        checkUpdatesButton.bezelStyle = .rounded
+
+        let versionRow = NSStackView(views: [version, checkUpdatesButton])
+        versionRow.orientation = .horizontal
+        versionRow.alignment = .centerY
+        versionRow.spacing = 10
+
+        let bugReportButton = NSButton(title: L10n.aboutBugReport,
+                                       target: self,
+                                       action: #selector(openBugReport))
+        bugReportButton.bezelStyle = .rounded
+
+        topStack.addArrangedSubview(title)
+        topStack.addArrangedSubview(message)
+
+        let bottomSpacer = NSView()
+        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
+
+        let bottomRow = NSStackView(views: [versionRow, bottomSpacer, bugReportButton])
+        bottomRow.orientation = .horizontal
+        bottomRow.alignment = .centerY
+        bottomRow.spacing = 12
+        bottomRow.distribution = .fill
+        bottomRow.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(topStack)
+        addSubview(bottomRow)
 
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
-            stack.topAnchor.constraint(equalTo: topAnchor)
+            topStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 40),
+            topStack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -40),
+            topStack.topAnchor.constraint(equalTo: topAnchor, constant: 40),
+
+            bottomRow.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 40),
+            bottomRow.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -40),
+            bottomRow.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -40)
         ])
+    }
+
+    // 打开公开反馈页面前先提示隐私风险，避免用户误提交个人信息。
+    @objc
+    private func openBugReport() {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = L10n.aboutPrivacyNoticeTitle
+        alert.informativeText = L10n.aboutPrivacyNoticeMessage
+        alert.addButton(withTitle: L10n.aboutContinue)
+        alert.addButton(withTitle: L10n.alertCancel)
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        NSWorkspace.shared.open(prefilledIssueURL())
+    }
+
+    // 使用 GitHub Releases API 做轻量更新检查，不引入额外更新框架。
+    @objc
+    private func checkForUpdates() {
+        var request = URLRequest(url: latestReleaseURL)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("Distracted/\(Constants.appVersion)", forHTTPHeaderField: "User-Agent")
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+            guard let self else { return }
+
+            guard error == nil,
+                  let data,
+                  let release = try? JSONDecoder().decode(LatestRelease.self, from: data) else {
+                DispatchQueue.main.async {
+                    self.showUpdateCheckFailedAlert()
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.presentUpdateResult(release: release)
+            }
+        }.resume()
+    }
+
+    // 根据远端 tag 与本地版本对比结果展示下载入口或最新状态。
+    private func presentUpdateResult(release: LatestRelease) {
+        let latestVersion = Self.normalizedVersion(release.tagName)
+        let currentVersion = Self.normalizedVersion(Constants.appVersion)
+
+        if Self.compareVersion(latestVersion, currentVersion) == .orderedDescending {
+            let alert = NSAlert()
+            alert.alertStyle = .informational
+            alert.messageText = L10n.aboutNewVersionTitle(release.tagName)
+            alert.informativeText = L10n.aboutNewVersionMessage
+            alert.addButton(withTitle: L10n.aboutDownload)
+            alert.addButton(withTitle: L10n.alertCancel)
+
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(release.htmlURL)
+            }
+        } else {
+            let alert = NSAlert()
+            alert.alertStyle = .informational
+            alert.messageText = L10n.aboutUpToDateTitle
+            alert.informativeText = ""
+            alert.addButton(withTitle: L10n.aboutContinue)
+            alert.runModal()
+        }
+    }
+
+    // 网络或解析失败时给出非阻塞提示，不影响主应用继续运行。
+    private func showUpdateCheckFailedAlert() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.aboutUpdateCheckFailedTitle
+        alert.informativeText = L10n.aboutUpdateCheckFailedMessage
+        alert.addButton(withTitle: L10n.aboutContinue)
+        alert.runModal()
+    }
+
+    // 预填版本与系统信息，降低用户提交 issue 时的上下文填写成本。
+    private func prefilledIssueURL() -> URL {
+        var components = URLComponents(url: issueURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "title", value: L10n.aboutIssueTitle),
+            URLQueryItem(name: "body",
+                         value: L10n.aboutIssueBody(appVersion: Constants.appVersion,
+                                                    macOSVersion: ProcessInfo.processInfo.operatingSystemVersionString))
+        ]
+        return components.url ?? issueURL
+    }
+
+    // 去掉常见的 v 前缀，保证 GitHub tag 与本地版本可直接比较。
+    private static func normalizedVersion(_ version: String) -> String {
+        version.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+    }
+
+    // 按语义版本的数字段逐位比较，缺失段按 0 处理。
+    private static func compareVersion(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        let left = lhs.split(separator: ".").map { Int($0) ?? 0 }
+        let right = rhs.split(separator: ".").map { Int($0) ?? 0 }
+        let count = max(left.count, right.count)
+
+        for index in 0..<count {
+            let l = index < left.count ? left[index] : 0
+            let r = index < right.count ? right[index] : 0
+            if l > r { return .orderedDescending }
+            if l < r { return .orderedAscending }
+        }
+
+        return .orderedSame
     }
 }
 
-// MARK: - Selection Pill
+// MARK: - 选中态背景
 
 // ═══════════════════════════════════════════════════════════════
 //  SelectionPillView — sidebar active-tab highlight background
@@ -689,6 +869,7 @@ private final class SelectionPillView: NSView {
     //      NSView.hitTest が nil を返す = マウスに対して不可視。
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
+    // 根据当前外观重取 CGColor 快照，确保强调色和明暗模式切换后仍正确。
     private func refreshLayerColor() {
         let isDark = effectiveAppearance
             .bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -698,18 +879,18 @@ private final class SelectionPillView: NSView {
             //      lighter/brighter than the unselected siblings.
             // [CN] 暗黑模式：叠加半透明白色，使选中按钮比未选中的更亮/更浅。
             // [JP] ダークモード：半透明の白を重ね、選択中ボタンを未選択より明るく見せる。
-            layer?.backgroundColor = NSColor(white: 1.0, alpha: 0.11).cgColor
+            layer?.backgroundColor = NSColor(white: 1.0, alpha: 0.12).cgColor
         } else {
             // [EN] Light mode: overlay a translucent black to make the selected button
             //      darker/deeper than the unselected siblings.
             // [CN] 明亮模式：叠加半透明黑色，使选中按钮比未选中的更深/更暗。
             // [JP] ライトモード：半透明の黒を重ね、選択中ボタンを未選択より暗く見せる。
-            layer?.backgroundColor = NSColor(white: 0.0, alpha: 0.09).cgColor
+            layer?.backgroundColor = NSColor(white: 0.0, alpha: 0.08).cgColor
         }
     }
 }
 
-// MARK: - Validation Popover
+// MARK: - 校验气泡
 
 // ═══════════════════════════════════════════════════════════════
 //  ValidationPopover — floating error bubble anchored to a field
@@ -806,6 +987,7 @@ private final class ValidationPopover: NSObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
+    // 主动关闭气泡并取消挂起的自动关闭任务。
     func dismiss() {
         dismissItem?.cancel()
         dismissItem = nil
@@ -813,7 +995,7 @@ private final class ValidationPopover: NSObject {
     }
 }
 
-// MARK: - Position Matrix
+// MARK: - 位置矩阵
 
 private final class PositionMatrixControl: NSControl {
 
@@ -848,6 +1030,7 @@ private final class PositionMatrixControl: NSControl {
         applyShadow()
     }
 
+    // 为九宫格面板添加轻量投影，让它在设置页中保持独立层级。
     private func applyShadow() {
         layer?.shadowColor   = NSColor.shadowColor.withAlphaComponent(0.22).cgColor
         layer?.shadowOpacity = 1
@@ -862,9 +1045,7 @@ private final class PositionMatrixControl: NSControl {
         let screenPath = NSBezierPath(roundedRect: screenRect, xRadius: 14, yRadius: 14)
         NSColor.controlBackgroundColor.setFill()
         screenPath.fill()
-        // [EN] Add a subtle adaptive fill inside the border so the grid reads as a separate surface.
-        // [CN] 在边框内部叠加轻微自适应底色，让九宫格成为独立的视觉区块。
-        // [JP] 枠内に控えめな適応色を重ね、グリッドを独立した面として見せる。
+        // 在边框内部叠加轻微自适应底色，让九宫格成为独立的视觉区块。
         adaptiveGridOverlayColor().setFill()
         screenPath.fill()
         NSColor.separatorColor.setStroke()
@@ -904,6 +1085,7 @@ private final class PositionMatrixControl: NSControl {
         }
     }
 
+    // 绘制弱分割线，提供九宫格感知但不过度抢占视觉焦点。
     private func drawSubtleGrid(in rect: NSRect) {
         NSColor.separatorColor.withAlphaComponent(0.45).setStroke()
         let path = NSBezierPath()
@@ -920,6 +1102,7 @@ private final class PositionMatrixControl: NSControl {
         path.stroke()
     }
 
+    // 根据系统明暗模式选择轻微覆盖色，保证矩阵背景有足够层次。
     private func adaptiveGridOverlayColor() -> NSColor {
         let appearance = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
         if appearance == .darkAqua {
@@ -928,6 +1111,7 @@ private final class PositionMatrixControl: NSControl {
         return NSColor.black.withAlphaComponent(0.045)
     }
 
+    // 将九宫格相对坐标映射为实际绘制点和命中点。
     private func pointMap(in rect: NSRect) -> [Constants.OverlayPosition: NSPoint] {
         [
             .topLeft: point(x: 0.12, y: 0.85, in: rect),
@@ -942,11 +1126,13 @@ private final class PositionMatrixControl: NSControl {
         ]
     }
 
+    // 用归一化坐标生成矩形内部的实际点位。
     private func point(x: CGFloat, y: CGFloat, in rect: NSRect) -> NSPoint {
         NSPoint(x: rect.minX + rect.width * x,
                 y: rect.minY + rect.height * y)
     }
 
+    // 计算鼠标点击点与候选点的距离，用于选择最近位置。
     private func distance(_ a: NSPoint, _ b: NSPoint) -> CGFloat {
         hypot(a.x - b.x, a.y - b.y)
     }

@@ -10,11 +10,13 @@ import CoreGraphics
 
 enum Constants {
 
-    // ── Timer ──────────────────────────────────────────────────
+    static let appVersion = "1.0.0"
+
+    // MARK: - 计时器
     /// [EN] Default interval between time flashes (seconds).  UserDefaults overrides.
     /// [CN] 默认闪烁间隔（秒）。UserDefaults 优先级更高。
     /// [JP] デフォルトの点滅間隔（秒）。UserDefaultsが優先。
-    static let defaultFlashInterval: TimeInterval = 1800  // 30 min
+    static let defaultFlashInterval: TimeInterval = 1800  // 30 分钟
     static let defaultIntervalMinutes: Int = 30
     static let intervalMinMinutes: Int = 1
     static let intervalMaxMinutes: Int = 999
@@ -34,7 +36,7 @@ enum Constants {
     /// [JP] 時刻フォントのサイズ。
     static let timeFontSize: CGFloat = 140
 
-    // ── Window geometry ────────────────────────────────────────
+    // MARK: - 窗口几何
     static let overlayWidth: CGFloat  = 520
     static let overlayHeight: CGFloat = 260
 
@@ -47,35 +49,35 @@ enum Constants {
     static let durationMin: Int = 1
     static let durationMax: Int = 10
 
-    // ── Phase 3 visual defaults ────────────────────────────────
+    // MARK: - 视觉默认值
     static let defaultBackgroundOpacity: Double = 0.5
     static let backgroundOpacityMin: Double = 0.0
     static let backgroundOpacityMax: Double = 1.0
 
-    // ── UserDefaults keys ──────────────────────────────────────
+    // MARK: - UserDefaults 键
     /// [EN] Keys used to persist user preferences in NSUserDefaults.
     /// [CN] 持久化用户偏好时使用的 NSUserDefaults 键名。
     /// [JP] ユーザー設定を NSUserDefaults に保存するためのキー。
     enum UserDefaultsKey {
-        /// [EN] User-facing reminder switch.
+        /// 用户面向的提醒开关。
         static let isEnabled = "isEnabled"
-        /// [EN] Flash interval in minutes (Double).
+        /// 闪烁间隔，单位为分钟。
         static let intervalMinutes = "intervalMinutes"
-        /// [EN] Screen position preset.
+        /// 屏幕位置预设。
         static let position = "position"
-        /// [EN] Display hold duration in seconds (Int).
+        /// 弹窗停留时间，单位为秒。
         static let durationSeconds = "durationSeconds"
-        /// [EN] Overlay font/background scale preset.
+        /// 悬浮窗字体与背景缩放预设。
         static let fontScale = "fontScale"
-        /// [EN] Overlay background opacity, 0.0...1.0.
+        /// 悬浮窗背景透明度，范围为 0.0...1.0。
         static let backgroundOpacity = "backgroundOpacity"
-        /// [EN] Preferences schema version for future migrations.
+        /// 偏好结构版本，用于未来迁移。
         static let schemaVersion = "schemaVersion"
-        /// [EN] Whether the launch-at-login onboarding prompt should be suppressed.
+        /// 是否不再显示登录启动引导弹窗。
         static let hasPromptedForStartup = "hasPromptedForStartup"
     }
 
-    // ── Legacy migration options ───────────────────────────────
+    // MARK: - 历史迁移位置
     enum LegacyPosition: String, CaseIterable {
         case topLeft     = "Top-Left"
         case top         = "Top"
@@ -85,7 +87,7 @@ enum Constants {
         case bottomRight = "Bottom-Right"
     }
 
-    // ── Phase 3 future UI options ──────────────────────────────
+    // MARK: - 悬浮窗位置
     enum OverlayPosition: String, CaseIterable {
         case topLeft = "Top-Left"
         case topCenter = "Top"

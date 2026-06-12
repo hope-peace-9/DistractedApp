@@ -1,17 +1,17 @@
 import Cocoa
 
 // ═══════════════════════════════════════════════════════════════
-//  StatusBarController — minimal Phase 3 menu bar surface
+//  StatusBarController — menu bar surface
 // ═══════════════════════════════════════════════════════════════
 //
-//  [EN] LSUIElement apps need a reliable menu-bar exit path. Phase 3
-//       keeps the menu tiny: Toggle, Settings..., Quit.
+//  [EN] LSUIElement apps need a reliable menu-bar exit path.
+//       The menu stays deliberately small: Toggle, Settings..., Quit.
 //
-//  [CN] LSUIElement 应用必须保留可靠的菜单栏退出入口。Phase 3
-//       将菜单压缩为：开关、设置、退出。
+//  [CN] LSUIElement 应用必须保留可靠的菜单栏退出入口。
+//       菜单保持克制：开关、设置、退出。
 //
-//  [JP] LSUIElement アプリには確実な終了導線が必要。Phase 3 では
-//       メニューを「切替、設定、終了」に絞る。
+//  [JP] LSUIElement アプリには確実な終了導線が必要。
+//       メニューは「切替、設定、終了」に絞る。
 // ═══════════════════════════════════════════════════════════════
 
 final class StatusBarController: NSObject {
@@ -26,7 +26,7 @@ final class StatusBarController: NSObject {
     /// [JP] `makeToggleItem` の行幅と一致。マルチディスプレイの X クランプ用。
     private static let estimatedMenuWidth: CGFloat = 220
 
-    // MARK: - Properties
+    // MARK: - 属性
 
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
@@ -36,7 +36,7 @@ final class StatusBarController: NSObject {
     var onToggleChange: ((Bool) -> Void)?
     var onSettingsRequested: (() -> Void)?
 
-    // MARK: - Init
+    // MARK: - 初始化
 
     override init() {
         super.init()
@@ -51,14 +51,14 @@ final class StatusBarController: NSObject {
         }
     }
 
-    // MARK: - Public API
+    // MARK: - 对外接口
 
     func updateToggle(isOn: Bool) {
         isToggleOn = isOn
         refreshToggleView()
     }
 
-    // MARK: - Button
+    // MARK: - 状态栏按钮
 
     private func configureButton() {
         guard let button = statusItem?.button else { return }
@@ -105,8 +105,9 @@ final class StatusBarController: NSObject {
         return icon
     }
 
-    // MARK: - Menu
+    // MARK: - 菜单
 
+    // 构建菜单内容；菜单不直接挂到 statusItem，避免首次点击时被 AppKit 提前弹出。
     private func rebuildMenu() {
         let m = NSMenu(title: L10n.appName)
         m.delegate = self
@@ -131,6 +132,7 @@ final class StatusBarController: NSObject {
         menu = m
     }
 
+    // 使用自定义 view 承载开关，保证菜单内可直接切换提醒状态。
     private func makeToggleItem() -> NSMenuItem {
         let item = NSMenuItem()
         let row = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 34))
@@ -161,14 +163,16 @@ final class StatusBarController: NSObject {
         return item
     }
 
+    // 将模型状态同步到当前可见的 NSSwitch。
     private func refreshToggleView() {
         guard let toggleSwitch else { return }
         toggleSwitch.isEnabled = true
         toggleSwitch.state = isToggleOn ? .on : .off
     }
 
-    // MARK: - Actions
+    // MARK: - 动作
 
+    // 菜单栏图标点击时先激活 App，再手动弹出菜单。
     @objc
     private func statusBarButtonClicked(_ sender: Any?) {
         guard statusItem?.button != nil, menu != nil else { return }
@@ -219,6 +223,7 @@ final class StatusBarController: NSObject {
         return button.convert(anchorInWindow, from: nil)
     }
 
+    // NSSwitch 状态变化后通知外层协调者处理业务状态。
     @objc
     private func toggleChanged(_ sender: NSSwitch) {
         isToggleOn = sender.state == .on
@@ -226,11 +231,13 @@ final class StatusBarController: NSObject {
         onToggleChange?(isToggleOn)
     }
 
+    // 转发设置窗口打开请求，具体窗口生命周期由上层管理。
     @objc
     private func openSettings() {
         onSettingsRequested?()
     }
 
+    // 退出 LSUIElement 应用的明确入口。
     @objc
     private func quitApp() {
         NSApplication.shared.terminate(nil)
@@ -243,21 +250,6 @@ extension StatusBarController: NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         // [EN] Root-cause fix for the "first menu open shows gray switch track" bug.
-        //
-        //      NSSwitch reads `NSApp.isActive` when deciding whether to paint the
-        //      `controlAccentColor` track (on, active) or the gray inactive track.
-        //      For LSUIElement apps, clicking the status-bar item shows the menu
-        //      but does NOT flip NSApp into the active state — so on first menu
-        //      open the switch renders gray even though its state is `.on`.
-        //      Opening the Settings window indirectly fixed it because
-        //      `showAndFocus()` calls `NSApp.activate(...)`, and that activation
-        //      persists. We activate explicitly here so the first menu open is
-        //      already in the active context.
-        //
-        //      Note: AppDelegate also primes NSApp at launch, but a user may
-        //      switch to another app and back; in that case NSApp can be inactive
-        //      again. This call guarantees the menu is always in the active
-        //      context regardless of what happened between opens.
         //
         // [CN] 首次打开菜单时开关轨迹呈灰色的根因修复。
         //
@@ -275,22 +267,7 @@ extension StatusBarController: NSMenuDelegate {
         //      永远处于 active 上下文。
         //
         // [JP] 「メニュー初回オープン時にスイッチがグレー」バグの根本原因修正。
-        //
-        //      NSSwitch は `controlAccentColor` のトラック（on/active）と
-        //      グレーの非アクティブトラックのどちらを描くかを決める際、
-        //      `NSApp.isActive` を参照する。LSUIElement アプリでは
-        //      ステータスバーアイコンクリックでメニューは表示されるが、
-        //      NSApp は active にならない。そのため初回オープン時、
-        //      `state = .on` でもスイッチがグレーで描画される。
-        //      設定ウィンドウを開くと直る理由は `showAndFocus()` が
-        //      `NSApp.activate(...)` を呼ぶためで、その状態は持続する。
-        //      ここで明示的に activate することで、初回からアクティブな
-        //      コンテキストでメニューを開けるようにする。
-        //
-        //      AppDelegate 起動時も prime しているが、ユーザーが他のアプリに
-        //      切り替えて戻ると NSApp は再び非 active になりうる。毎回
-        //      menuWillOpen で activate しておけば、間に何が起きても
-        //      メニュー表示時は常に active コンテキストになる。
+
         NSApp.activate(ignoringOtherApps: true)
 
         isToggleOn = PreferencesStore.shared.isEnabled
