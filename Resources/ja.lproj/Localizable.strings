@@ -1,0 +1,71 @@
+/* App */
+"app.name" = "時間、忘れてない？";
+"app.displayName" = "Distracted? (時間、忘れてない？)";
+
+/* Minimal menu bar */
+"menu.toggle" = "オン/オフ";
+"menu.settings" = "設定...";
+"menu.quit" = "終了";
+
+/* About */
+"about.title" = "時間、忘れてない？";
+"about.message" = "ひと目で時間感覚を取り戻す。";
+"about.summary" = "%d分ごと · %d秒表示 · %@";
+"about.version" = "v%@";
+"about.bugReport" = "バグ報告";
+"about.checkUpdates" = "アップデートを確認";
+"about.privacyNotice.title" = "GitHub フィードバックを開く";
+"about.privacyNotice.message" = "GitHub でフィードバックを送信するページを開きます。公開ページでは個人情報の取り扱いにご注意ください。";
+"about.continue" = "続ける";
+"about.upToDate.title" = "現在のバージョンは最新です";
+"about.upToDate.message" = "現在のバージョンはすでに最新です。";
+"about.newVersion.title" = "新しいバージョン %@ があります";
+"about.newVersion.message" = "GitHub で新しいリリースをダウンロードできます。";
+"about.download" = "ダウンロードへ";
+"about.updateCheckFailed.title" = "アップデートを確認できません";
+"about.updateCheckFailed.message" = "ネットワーク接続を確認して、後でもう一度お試しください。";
+"about.issue.title" = "バグ報告";
+"about.issue.body" = "App バージョン: %@\nmacOS バージョン: %@\n\n問題の説明:\n\n再現手順:\n1. \n2. \n3. \n\n期待される結果:\n\n実際の結果:\n";
+
+/* Settings window */
+"settings.window.title" = "設定";
+"settings.sidebar.settings" = "設定";
+"settings.sidebar.about" = "このアプリについて";
+"settings.section.reminder" = "リマインダー";
+"settings.section.appearance" = "外観";
+"settings.interval.label" = "間隔";
+"settings.interval.unit" = "分";
+"settings.interval.placeholder" = "例: 30";
+"settings.interval.error" = "1から999までの整数の分数を入力してください。";
+"settings.duration.label" = "表示時間";
+"settings.duration.unit" = "秒";
+"settings.duration.placeholder" = "例: 2";
+"settings.duration.error" = "1から10までの整数の秒数を入力してください。";
+"settings.position.label" = "位置";
+"settings.position.help" = "時刻を画面のどこに表示するか選択します。";
+"settings.fontSize.label" = "文字サイズ";
+"settings.fontSize.small" = "小";
+"settings.fontSize.medium" = "中";
+"settings.fontSize.large" = "大";
+"settings.opacity.label" = "背景の不透明度";
+"settings.opacity.value" = "%d%%";
+"settings.preview.label" = "ライブプレビュー";
+"settings.confirm" = "確認";
+
+/* Position names */
+"position.topLeft" = "左上";
+"position.topCenter" = "上";
+"position.topRight" = "右上";
+"position.middleLeft" = "左";
+"position.center" = "中央";
+"position.middleRight" = "右";
+"position.bottomLeft" = "左下";
+"position.bottomCenter" = "下";
+"position.bottomRight" = "右下";
+
+/* Alerts */
+"alert.cancel" = "キャンセル";
+"alert.startup.title" = "ログイン時に「時間、忘れてない？」を自動的に起動しますか？";
+"alert.startup.message" = "追加後も、macOS の「システム設定 > 一般 > ログイン項目」でいつでも変更できます。";
+"alert.startup.yes" = "はい";
+"alert.startup.dontAskAgain" = "今後表示しない";

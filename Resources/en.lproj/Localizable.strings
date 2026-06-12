@@ -1,0 +1,71 @@
+/* App */
+"app.name" = "Distracted?";
+"app.displayName" = "Distracted?";
+
+/* Minimal menu bar */
+"menu.toggle" = "Toggle";
+"menu.settings" = "Settings...";
+"menu.quit" = "Quit";
+
+/* About */
+"about.title" = "About Distracted?";
+"about.message" = "Time awareness at a glance.";
+"about.summary" = "Every %d min · %ds duration · %@";
+"about.version" = "v%@";
+"about.bugReport" = "Bug Report";
+"about.checkUpdates" = "Check for Updates";
+"about.privacyNotice.title" = "Open GitHub Feedback";
+"about.privacyNotice.message" = "We will take you to GitHub to submit feedback. Please protect your personal privacy on the public page.";
+"about.continue" = "Continue";
+"about.upToDate.title" = "You’re up to date";
+"about.upToDate.message" = "The current version is already the latest.";
+"about.newVersion.title" = "New version found %@";
+"about.newVersion.message" = "A newer release is available on GitHub.";
+"about.download" = "Go to Download";
+"about.updateCheckFailed.title" = "Unable to check for updates";
+"about.updateCheckFailed.message" = "Please check your network connection and try again later.";
+"about.issue.title" = "Bug report";
+"about.issue.body" = "App version: %@\nmacOS version: %@\n\nDescribe the issue:\n\nSteps to reproduce:\n1. \n2. \n3. \n\nExpected result:\n\nActual result:\n";
+
+/* Settings window */
+"settings.window.title" = "Settings";
+"settings.sidebar.settings" = "Settings";
+"settings.sidebar.about" = "About";
+"settings.section.reminder" = "Reminder";
+"settings.section.appearance" = "Appearance";
+"settings.interval.label" = "Interval";
+"settings.interval.unit" = "min";
+"settings.interval.placeholder" = "e.g. 30";
+"settings.interval.error" = "Enter a whole number between 1 and 999 minutes.";
+"settings.duration.label" = "Duration";
+"settings.duration.unit" = "sec";
+"settings.duration.placeholder" = "e.g. 2";
+"settings.duration.error" = "Enter a whole number between 1 and 10 seconds.";
+"settings.position.label" = "Position";
+"settings.position.help" = "Choose where the time appears on screen.";
+"settings.fontSize.label" = "Font Size";
+"settings.fontSize.small" = "Small";
+"settings.fontSize.medium" = "Medium";
+"settings.fontSize.large" = "Large";
+"settings.opacity.label" = "Background Opacity";
+"settings.opacity.value" = "%d%%";
+"settings.preview.label" = "Live Preview";
+"settings.confirm" = "Confirm";
+
+/* Position names */
+"position.topLeft" = "Top Left";
+"position.topCenter" = "Top";
+"position.topRight" = "Top Right";
+"position.middleLeft" = "Left";
+"position.center" = "Center";
+"position.middleRight" = "Right";
+"position.bottomLeft" = "Bottom Left";
+"position.bottomCenter" = "Bottom";
+"position.bottomRight" = "Bottom Right";
+
+/* Alerts */
+"alert.cancel" = "Cancel";
+"alert.startup.title" = "Run “Distracted?” automatically at login?";
+"alert.startup.message" = "After adding it, you can change this anytime in macOS System Settings > General > Login Items.";
+"alert.startup.yes" = "Yes";
+"alert.startup.dontAskAgain" = "Don’t ask again";
